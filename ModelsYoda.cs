@@ -114,8 +114,7 @@ namespace DataDownloader
 
 		public Reference()
 		{ }
-
-	}
+    }
 
 
 	public class SuppDoc

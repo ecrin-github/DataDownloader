@@ -1093,9 +1093,7 @@ namespace DataDownloader
 			st.study_titles = study_titles;
 			st.study_references = study_references;
     		return st;
-
 		}
-
 	}
 
 

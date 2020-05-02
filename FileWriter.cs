@@ -70,5 +70,6 @@ namespace DataDownloader
 
 			Console.WriteLine(seqnum.ToString());
 		}
+
 	}
 }

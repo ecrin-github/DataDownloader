@@ -71,5 +71,4 @@ namespace DataDownloader
 		public string doi { get; set; }
 	}
 
-
 }

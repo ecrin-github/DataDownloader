@@ -158,6 +158,5 @@ namespace DataDownloader
 				return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
 			}
 		}
-
 	}
 }
