@@ -14,7 +14,7 @@ namespace DataDownloader
 		}
 
 
-		public void WriteBioLINCCFile(XmlSerializer writer, BioLINCC_Record st, string full_path)
+		public void WriteBioLINCCFile(XmlSerializer writer, BioLinccRecord st, string full_path)
 		{
 			if (File.Exists(full_path))
 			{

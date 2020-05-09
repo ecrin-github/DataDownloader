@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DataDownloader
 {
-	public class BioLINCC_Record
+	public class BioLinccRecord
 	{
 		public int id { get; set; }
 		public string sd_id { get; set; }
@@ -15,8 +15,10 @@ namespace DataDownloader
 		public string brief_description { get; set; }
 		public string study_period { get; set; }
 		public string date_prepared { get; set; }
+		public DateTime? page_prepared_date { get; set; }
 		public string last_updated { get; set; }
 		public DateTime? last_revised_date { get; set; }
+		public int publication_year { get; set; }
 		public string study_website { get; set; }
 		public int num_clinical_trial_urls { get; set; }
 		public int num_primary_pub_urls { get; set; }
@@ -31,12 +33,12 @@ namespace DataDownloader
 		public List<Resource> resources { get; set; }
 		public List<AssocDoc> assoc_docs { get; set; }
 
-		public BioLINCC_Record(int _id)
+		public BioLinccRecord(int _id)
 		{
 			id = _id;
 		}
 
-		public BioLINCC_Record()
+		public BioLinccRecord()
 		{}
 	}
 	

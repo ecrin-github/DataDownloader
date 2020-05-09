@@ -38,9 +38,9 @@ namespace DataDownloader
 				string last_sf = args[1];
 				if (Int32.TryParse(last_sf, out int sf_id))
 				{
-					if (sf_id < 100016)
+					if (sf_id < 100014)
 					{
-						WriteLine("The second integer needs to be an integer, greater than 100015");
+						WriteLine("The second integer needs to be an integer, greater than 100014");
 					}
 					else
 					{

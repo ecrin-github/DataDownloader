@@ -2,7 +2,7 @@
   "profiles": {
     "DataDownloader": {
       "commandName": "Project",
-      "commandLineArgs": "y 100016"
+      "commandLineArgs": "b 100015"
     }
   }
 }
