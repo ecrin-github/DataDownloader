@@ -68,4 +68,3 @@ The plan is to wrap a UI around the app at some point.
 * Project: EOSC Life
 * Funding: EU H2020 programme, grant 824087
 
-Replaces BioLINCCScrape and YodaFetch, for now. More to follow
