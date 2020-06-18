@@ -31,7 +31,7 @@ namespace DataDownloader
 	}
 	
 	[Table("sf.source_data_studies")]
-	public class FileRecord
+	public class StudyFileRecord
 	{
 		[Key]
 		public int id { get; set; }
@@ -48,7 +48,7 @@ namespace DataDownloader
 		public DateTime? last_processed { get; set; }
 
 		// constructor when a revision data can be expected (not always there)
-		public FileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+		public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
 											  DateTime? _last_revised, string _local_path)
 		{
 			source_id = _source_id;
@@ -62,7 +62,7 @@ namespace DataDownloader
 		}
 
 		// constructor when an 'assumed complete' judgement can be expected (not always there)
-		public FileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+		public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
 											  bool? _assume_complete, string _local_path)
 		{
 			source_id = _source_id;
@@ -75,7 +75,59 @@ namespace DataDownloader
 			local_path = _local_path;
 		}
 
-		public FileRecord()
+
+		public StudyFileRecord()
+		{ }
+
+	}
+
+
+	[Table("sf.source_data_objects")]
+	public class ObjectFileRecord
+	{
+		[Key]
+		public int id { get; set; }
+
+		public int source_id { get; set; }
+		public string sd_id { get; set; }
+		public string remote_url { get; set; }
+		public int last_sf_id { get; set; }
+		public DateTime? last_revised { get; set; }
+		public bool? assume_complete { get; set; }
+		public int download_status { get; set; }
+		public DateTime? download_datetime { get; set; }
+		public string local_path { get; set; }
+		public DateTime? last_processed { get; set; }
+
+		// constructor when a revision data can be expected (not always there)
+		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+											  DateTime? _last_revised, string _local_path)
+		{
+			source_id = _source_id;
+			sd_id = _sd_id;
+			remote_url = _remote_url;
+			last_sf_id = _last_sf_id;
+			last_revised = _last_revised;
+			download_status = 2;
+			download_datetime = DateTime.Now;
+			local_path = _local_path;
+		}
+
+		// constructor when an 'assumed complete' judgement can be expected (not always there)
+		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+											  bool? _assume_complete, string _local_path)
+		{
+			source_id = _source_id;
+			sd_id = _sd_id;
+			remote_url = _remote_url;
+			last_sf_id = _last_sf_id;
+			assume_complete = _assume_complete;
+			download_status = 2;
+			download_datetime = DateTime.Now;
+			local_path = _local_path;
+		}
+
+		public ObjectFileRecord()
 		{ }
 
 	}

@@ -5,6 +5,7 @@ using System;
 using Microsoft.Extensions.Configuration;
 using System.Linq;
 using System.Collections.Generic;
+using PostgreSQLCopyHelper;
 
 namespace DataDownloader
 {
@@ -61,7 +62,7 @@ namespace DataDownloader
 		}
 
 
-		public FileRecord FetchStudyFileRecord(string sd_id, int source_id)
+		public StudyFileRecord FetchStudyFileRecord(string sd_id, int source_id)
 		{
 			using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
 			{
@@ -69,24 +70,46 @@ namespace DataDownloader
 				sql_string += " assume_complete, download_status, download_datetime, local_path, last_processed ";
 				sql_string += " from sf.source_data_studies ";
 				sql_string += " where sd_id = '" + sd_id + "' and source_id = " + source_id.ToString();
-				return Conn.Query<FileRecord>(sql_string).FirstOrDefault();
-			}
-		}
-
-		public bool StoreStudyFileRec(FileRecord file_record)
-		{
-			using (var conn = new NpgsqlConnection(connString))
-			{
-				return conn.Update<FileRecord>(file_record);
+				return Conn.Query<StudyFileRecord>(sql_string).FirstOrDefault();
 			}
 		}
 
 
-		public int InsertStudyFileRec(FileRecord file_record)
+		public ObjectFileRecord FetchObjectFileRecord(string sd_id, int source_id)
+		{
+			using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = "select id, source_id, sd_id, remote_url, last_sf_id, last_revised, ";
+				sql_string += " assume_complete, download_status, download_datetime, local_path, last_processed ";
+				sql_string += " from sf.source_data_objects ";
+				sql_string += " where sd_id = '" + sd_id + "' and source_id = " + source_id.ToString();
+				return Conn.Query<ObjectFileRecord>(sql_string).FirstOrDefault();
+			}
+		}
+
+		public bool StoreStudyFileRec(StudyFileRecord file_record)
 		{
 			using (var conn = new NpgsqlConnection(connString))
 			{
-				return (int)conn.Insert<FileRecord>(file_record);
+				return conn.Update<StudyFileRecord>(file_record);
+			}
+		}
+
+
+		public bool StoreObjectFileRec(ObjectFileRecord file_record)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				return conn.Update<ObjectFileRecord>(file_record);
+			}
+		}
+
+
+		public int InsertStudyFileRec(StudyFileRecord file_record)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				return (int)conn.Insert<StudyFileRecord>(file_record);
 			}
 		}
 
@@ -108,14 +131,14 @@ namespace DataDownloader
 		{
 			// Get the source data record and modify it
 			// or add a new one...
-			FileRecord file_record = FetchStudyFileRecord(sd_id, source_id);
+			StudyFileRecord file_record = FetchStudyFileRecord(sd_id, source_id);
 
 			if (file_record == null)
 			{
 				// this neeeds to have a new record
 				// check last revised date....???
 				// new record
-				file_record = new FileRecord(source_id, sd_id, remote_url, sf_id,
+				file_record = new StudyFileRecord(source_id, sd_id, remote_url, sf_id,
 												last_revised_date, full_path);
 				InsertStudyFileRec(file_record);
 			}
@@ -136,6 +159,16 @@ namespace DataDownloader
 			Console.WriteLine(seqnum.ToString());
 		}
 
+
+		public ulong StoreRecs(PostgreSQLCopyHelper<StudyFileRecord> copyHelper, IEnumerable<StudyFileRecord> entities)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				conn.Open();
+				// Returns count of rows written 
+				return copyHelper.SaveAll(conn, entities);
+			}
+		}
 
 	}
 }

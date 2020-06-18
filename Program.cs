@@ -4,6 +4,9 @@ using System.Text;
 using static System.Console;
 using DataDownloader.yoda;
 using DataDownloader.biolincc;
+using DataDownloader.euctr;
+using DataDownloader.isrctn;
+using DataDownloader.pubmed;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 
@@ -63,10 +66,14 @@ namespace DataDownloader
 					}
 				case 100123:
 					{
+						ISRCTN_Controller biolincc_controller = new ISRCTN_Controller(browser, sf_id, source, logging_repo);
+						biolincc_controller.LoopThroughPages(); 
 						break;
 					}
 				case 100126:
 					{
+						EUCTR_Controller biolincc_controller = new EUCTR_Controller(browser, sf_id, source, logging_repo);
+						biolincc_controller.LoopThroughPages(); 
 						break;
 					}
 				case 100115:
