@@ -1,21 +1,14 @@
 ﻿using HtmlAgilityPack;
-using System;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ScrapySharp.Extensions;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.IO;
-using System.Net;
-using System.Web;
-using System.Security.Cryptography;
 
-namespace DataDownloader
+namespace DataDownloader.biolincc
 {
-	public class BioLINCC_Processor
+    public class BioLINCC_Processor
 	{
 		HelperFunctions hp;
 	
@@ -25,9 +18,9 @@ namespace DataDownloader
 			hp = new HelperFunctions();
 		}
 
-		public BioLinccRecord GetStudyDetails(ScrapingBrowser browser, BioLinccDataLayer repo, int study_id, HtmlNode row)
+		public BioLinccRecord GetStudyDetails(ScrapingBrowser browser, BioLinccDataLayer repo, int seqnum, HtmlNode row)
 		{
-			BioLinccRecord st = new BioLinccRecord(study_id);
+			BioLinccRecord st = new BioLinccRecord();
 
 			// get the basic information from the row
 			// passed from the summary studies table
@@ -41,7 +34,7 @@ namespace DataDownloader
 			if (collection_type == "Non-BioLINCC Resource") return null;
 
 			HtmlNode link = cols[0].CssSelect("a").FirstOrDefault();
-			st.display_title = link.InnerText.Trim();
+			st.title = link.InnerText.Trim();
 			st.remote_url = "https://biolincc.nhlbi.nih.gov" + link.Attributes["href"].Value;
 			st.acronym = cols[1].InnerText.Replace("\n", "").Replace("\r", "").Trim();
 			st.resources_available = cols[2].InnerText.Replace("\n", "").Replace("\r", "").Trim();
@@ -55,7 +48,7 @@ namespace DataDownloader
 			char[] splitter = { '(' };
 
 			// Start the extraction for this study
-			Console.WriteLine(study_id.ToString() + ":" + st.acronym);
+			Console.WriteLine(seqnum.ToString() + ":" + st.acronym);
 
 			WebPage studyPage = browser.NavigateToPage(new Uri(st.remote_url));
 
@@ -78,7 +71,7 @@ namespace DataDownloader
 				string attribute_name = entryBold.InnerText.Trim();
 				string attribute_value = entries[i].InnerText;
 
-				if (attribute_name == "Accession Number") st.sd_id = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+				if (attribute_name == "Accession Number") st.sd_sid = hp.CleanValue(attribute_value, attribute_name, entrySupp);
 				if (attribute_name == "Study Type")
 				{
 					string study_type = hp.CleanValue(attribute_value, attribute_name, entrySupp);

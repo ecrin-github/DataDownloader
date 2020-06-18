@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace DataDownloader
+namespace DataDownloader.yoda
 {
 	public class YodaDataLayer
 	{

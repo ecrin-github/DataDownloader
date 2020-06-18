@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using Dapper.Contrib.Extensions;
 
 
-namespace DataDownloader
+namespace DataDownloader.yoda
 {
 
 	public class Yoda_Record
 	{
-		public int id { get; set; }
-		public string nct_number { get; set; }
-		public string sd_id { get; set; }
+		public string sd_sid { get; set; }
+    	public string nct_number { get; set; }
 		public string title { get; set; }
 		public bool is_yoda_only { get; set; }
 		public string remote_url { get; set; }

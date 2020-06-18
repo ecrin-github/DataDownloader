@@ -6,8 +6,9 @@ using Microsoft.Extensions.Configuration;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace DataDownloader
+namespace DataDownloader.biolincc
 {
+
 	public class BioLinccDataLayer
 	{
 		private string _biolincc_pp_connString;

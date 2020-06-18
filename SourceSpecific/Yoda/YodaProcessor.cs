@@ -13,7 +13,7 @@ using System.Net;
 using System.Web;
 using System.Security.Cryptography;
 
-namespace DataDownloader
+namespace DataDownloader.yoda
 {
 	public class Yoda_Processor
 	{
@@ -114,7 +114,6 @@ namespace DataDownloader
 				Console.WriteLine(report);
 			}
 
-			st.id = id;
 			st.nct_number = nct_number;
 			st.is_yoda_only = (nct_number.StartsWith("NCT") || nct_number.StartsWith("ISRCTN")) ? false : true;
 			st.title = title;
@@ -341,8 +340,8 @@ namespace DataDownloader
 			// the url to the details page, however, must be unique...
 			string link_to_page = sm.details_link;
 			int last_slash_pos = link_to_page.LastIndexOf("/");
-			string sd_id = link_to_page.Substring(last_slash_pos + 1);
-			st.sd_id = sd_id;
+			string sd_sid = link_to_page.Substring(last_slash_pos + 1);
+			st.sd_sid = sd_sid;
 
 			List<Identifier> study_identifiers = new List<Identifier>();
 			List<Title> study_titles = new List<Title>();
@@ -371,7 +370,7 @@ namespace DataDownloader
 			}
 			else
 			{
-				SponsorDetails sponsor = repo.FetchYodaSponsorDetailsFromTable(sd_id);
+				SponsorDetails sponsor = repo.FetchYodaSponsorDetailsFromTable(sd_sid);
 				if (sponsor == null)
 				{
 					sponsor_org_id = 0;
@@ -397,7 +396,7 @@ namespace DataDownloader
 
 			// for the study, add the title (seems to be the full scientific title)
 			bool is_default_title = (st.is_yoda_only) ? true : false;
-			study_titles.Add(new Title(st.sd_id, st.title, 18, "Other scientific title", is_default_title, "From YODA web page"));
+			study_titles.Add(new Title(st.sd_sid, st.title, 18, "Other scientific title", is_default_title, "From YODA web page"));
 
 			// create study references (pmids)
 			if (st.primary_citation_link.Contains("http"))

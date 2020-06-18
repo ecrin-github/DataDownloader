@@ -8,30 +8,31 @@ using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
 
-namespace DataDownloader
+namespace DataDownloader.yoda
 {
     class Yoda_Controller
 	{
-
 		ScrapingBrowser browser;
-		DataLayer repo;
 		YodaDataLayer yoda_repo;
 		Yoda_Processor processor;
+		Source source;		
 		string file_base;
 		FileWriter file_writer;
-		int last_sf_id;
+		int sf_id;
 		int source_id;
+		LoggingDataLayer logging_repo;
 
-		public Yoda_Controller(ScrapingBrowser _browser, DataLayer _repo, int _last_sf_id, int _source_id)
+		public Yoda_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
-			repo = _repo;
 			yoda_repo = new YodaDataLayer();
 			processor = new Yoda_Processor();
-			file_writer = new FileWriter(_repo);
-			last_sf_id = _last_sf_id;
-			source_id = _source_id;
-			file_base = repo.GetYodaFolderBase();
+			source = _source;
+			file_base = source.local_folder;
+			source_id = source.id;
+			sf_id = _sf_id;
+			file_writer = new FileWriter(source);
+			logging_repo = _logging_repo;
 		}
 
 		public void LoopThroughPages()
@@ -66,10 +67,10 @@ namespace DataDownloader
 				if (st != null)
 				{
 					// Write out study record as XML
-					string file_name = "yoda" + st.sd_id + ".xml";
+					string file_name = source.local_file_prefix + st.sd_sid + ".xml";
 					string full_path = Path.Combine(file_base, file_name);
 					file_writer.WriteYodaFile(writer, st, full_path);
-					file_writer.UpdateDownloadLog(seqnum, source_id, st.sd_id, st.remote_url, last_sf_id,
+					logging_repo.UpdateDownloadLog(seqnum, source_id, st.sd_sid, st.remote_url, sf_id,
 													  st.last_revised_date, full_path);
 
 					// put a pause here if necessary

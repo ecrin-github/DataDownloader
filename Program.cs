@@ -2,6 +2,10 @@
 using System;
 using System.Text;
 using static System.Console;
+using DataDownloader.yoda;
+using DataDownloader.biolincc;
+using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace DataDownloader
 {
@@ -9,82 +13,153 @@ namespace DataDownloader
 	{
 		static ScrapingBrowser browser = new ScrapingBrowser();
 
-		static void Main(string[] args)
+		static async Task Main(string[] args)
 		{
+			// Identify source type and location, destination folder
 
-			int last_sf_id  = 0;
-			int source_id = 0;
-			if (args.Length == 2)
+			if (NoArgsProvided(args)) return;
+			int source_id = GetFirstArg(args[0]);
+			if (source_id == 0) return;
+
+			LoggingDataLayer logging_repo = new LoggingDataLayer();
+			Source source = logging_repo.FetchSourceParameters(source_id);
+			if (source == null)
 			{
-                string source = args[0];
-				switch (source.ToLower()[0])
-				{
-					case 'b':
-						{
-							source_id = 100900; break; // biolincc
-						}
-					case 'y':
-						{
-							source_id = 100901; break; // yoda
-						}
-				}
+				WriteLine("Sorry - the first argument does not correspond to a known source");
+				return;
+			}
 
-				if (source_id == 0)
-				{
-                    WriteLine("sorry - I don't recognise that source argument");
-				}
-				
-				
-				string last_sf = args[1];
-				if (Int32.TryParse(last_sf, out int sf_id))
-				{
-					if (sf_id < 100014)
+			int sf_id = logging_repo.GetNextSearchFetchId();
+
+			int harvest_type_id = GetHarvestType(args, source);
+			DateTime? harvest_cutoff_revision_date = harvest_type_id == 2 ? GetHarvestCutOffDate(args) : null;
+			if (harvest_type_id == 2 && harvest_cutoff_revision_date == null)
+			{
+				WriteLine("Sorry - there must be a valid cutoff date for a harvest of type 2");
+				return;
+			}
+
+			browser.AllowAutoRedirect = true;
+			browser.AllowMetaRedirect = true;
+			browser.Encoding = Encoding.UTF8;
+
+			switch (source.id)
+			{
+				case 101900:
 					{
-						WriteLine("The second integer needs to be an integer, greater than 100014");
+						BioLINCC_Controller biolincc_controller = new BioLINCC_Controller(browser, sf_id, source, logging_repo);
+						biolincc_controller.LoopThroughPages();
+						break;
 					}
-					else
+				case 101901:
 					{
-						last_sf_id = sf_id;
+						Yoda_Controller yoda_controller = new Yoda_Controller(browser, sf_id, source, logging_repo);
+						yoda_controller.LoopThroughPages();
+						break;
 					}
-				}
-				else
-				{
-					WriteLine("The second integer needs to be an integer, greater than 100015");
-				}
+				case 100120:
+					{
+						break;
+					}
+				case 100123:
+					{
+						break;
+					}
+				case 100126:
+					{
+						break;
+					}
+				case 100115:
+					{
+						break;
+					}
+				case 100135:
+					{
+						break;
+					}
+			}
+
+			// tidy up and ensure logging up to date
+			// logging_repo.CreateSFLoggingRecord();
+		}
+
+
+		private static bool NoArgsProvided(string[] args)
+		{
+			if (args.Length == 0)
+			{
+				// may need a cut off point....
+				WriteLine("Sorry - two parameters are necessary");
+				WriteLine("The first is a 6 digit number to indicate the source.");
+				WriteLine("The second an integer to indicate the last search-fetch id");
+				return true;
 			}
 			else
 			{
-				WriteLine("Wrong number of command line arguments - two are required");
-				WriteLine("The first a string to indicate the source");
-				WriteLine("The second an integer to indicate the last search-fetch id");
-			}
-
-            // proceed if both required parameters are valid
-			if (last_sf_id > 0 && source_id > 0)
-			{
-
-				browser.AllowAutoRedirect = true;
-				browser.AllowMetaRedirect = true;
-				browser.Encoding = Encoding.UTF8;
-				DataLayer repo = new DataLayer();
-
-				switch (source_id)
-				{
-					case 100900:
-						{
-							BioLINCC_Controller biolincc_controller = new BioLINCC_Controller(browser, repo, last_sf_id, source_id);
-							biolincc_controller.LoopThroughPages();
-							break;
-						}
-					case 100901:
-						{
-							Yoda_Controller yoda_controller = new Yoda_Controller(browser, repo, last_sf_id, source_id);
-							yoda_controller.LoopThroughPages();
-							break;
-						}
-				}
+				return false;
 			}
 		}
-	}
 
+		private static int GetFirstArg(string arg)
+		{
+			int arg_id = 0;
+			if (!Int32.TryParse(arg, out arg_id))
+			{
+				WriteLine("Sorry - the first argument must be an integer");
+			}
+			return arg_id;
+		}
+
+
+		private static int GetHarvestType(string[] args, Source source_parameters)
+		{
+			if (args.Length > 1)
+			{
+				int harvest_type_arg = 0;
+				if (!Int32.TryParse(args[1], out harvest_type_arg))
+				{
+					WriteLine("The second argument, if present, must be an integer (default settinmg will be used)");
+					harvest_type_arg = source_parameters.default_harvest_type_id;
+				}
+				if (harvest_type_arg != 1 && harvest_type_arg != 2 && harvest_type_arg != 3)
+				{
+					WriteLine("Sorry - the second argument, if present, must be 1, 2, or 3 (default settinmg will be used)");
+					harvest_type_arg = source_parameters.default_harvest_type_id;
+				}
+				return harvest_type_arg;
+			}
+			else
+			{
+				// use the default harvesting method
+				return source_parameters.default_harvest_type_id;
+			}
+		}
+
+
+		private static DateTime? GetHarvestCutOffDate(string[] args)
+		{
+			if (args.Length < 3)
+			{
+				WriteLine("Sorry - if the second argument is 2, ");
+				WriteLine("(harvest only files revised after a set date)");
+				WriteLine("You must include a third date parameter in the format YYYY-MM-DD");
+				return null;
+			}
+
+			if (!Regex.Match(args[2], @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
+			{
+				WriteLine("Sorry - if the second argument is 2, "); ;
+				WriteLine("(harvest only files revised after a set date)");
+				WriteLine("The third parameter must be in in the format YYYY-MM-DD");
+				return null;
+			}
+
+			return new DateTime(Int32.Parse(args[2].Substring(0, 4)),
+								Int32.Parse(args[2].Substring(5, 2)),
+								Int32.Parse(args[2].Substring(8, 2)));
+		}
+	}
 }
+
+
+
