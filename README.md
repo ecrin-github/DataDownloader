@@ -10,7 +10,7 @@ The mechanisms used include
 * Downloading CSV files and converrting the data into XML files.
 
 The types of download are listed below. A particular source will have a default download type, dependent on the availability of an API, exposure of 'date last revised' etc. The default type can be overwritten by the input parameters.
-<br/><br/>
+
 
 The format of the XML files created vary from source to source but represent the initial stage in the process of converting the source data into a consistent schema.
 
@@ -22,7 +22,7 @@ The system is currently a consiole app, and takes 3 parameters
 The plan is to wrap a UI around the app at some point.
 
 
-### PDownload Types
+### Download Types
 10:	Full initial fetch (download)<br/>
 *Identifies and downloads XML files, one per record, from the entire data source.*
 
