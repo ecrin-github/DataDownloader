@@ -10,10 +10,10 @@ The mechanisms used include
 The types of download are listed below. A particualr source will have a default download type, dependent on the availability of an API, exposure of 'date last revised' etc. The default type can be overwritten by the input parameters.
 <br/>
 10	Full initial fetch (download)<br/>
-'Identifies and downloads XML files, one per record, from the entire data source.'
+#Identifies and downloads XML files, one per record, from the entire data source.#
 
 11	Full initial fetch (scrape)	<br/>
-''Scrapes data, creates XML files, one per record, from the entire data source.''
+##Scrapes data, creates XML files, one per record, from the entire data source.##
 
 12	Full update (download)<br/>	
 Identifies and downloads XML files, one per record, from new or revised records within the entire data source.
