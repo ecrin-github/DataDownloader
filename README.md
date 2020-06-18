@@ -18,7 +18,7 @@ The format of the XML files created vary from source to source but represent the
 The system is currently a consiole app, and takes 3 parameters
 * A 6 digit integer representing the source (e.g. 100120 is Clinical Trials,gov)
 * A 2 digit intgere representing the download type (see listing below). If not provided the default download type will be read from the database.
-* A cut-off date for those download types that are date dependent. In such cases only files or pages that have been revised since the cutoff data provided will be downloaded.
+* A cut-off date for those download types that are date dependent. In such cases only files or pages that have been revised since the cutoff data provided will be downloaded.<br/>
 The plan is to wrap a UI around the app at some point.
 
 
