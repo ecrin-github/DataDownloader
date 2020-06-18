@@ -2,7 +2,7 @@
 Downloads data from sources to local files, OR in some cases identifies files / pages for later downloading of the full data.<br/>
 Sources are trial registries and data repositories.
 
-### N.B. Sources being added gradually - Yoda and BioLincc at the moment, CTG, EUCTR, ISRCTN, WHO, PubMed to be added
+#### *N.B. Sources being added gradually - Yoda and BioLincc at the moment, CTG, EUCTR, ISRCTN, WHO, PubMed to be added*
 
 The mechanisms used include
 * Downloading XML files directly from a source's API, (e.g. for ClicalTrials.gov, PubMed)
