@@ -2,13 +2,27 @@
 Downloads data from sources to local files, OR in some cases identifies files / pages for later downloading of the full data.<br/>
 Sources are trial registries and data repositories.
 
+### N.B. Sources being added gradually - Yoda and BioLincc at the moment, CTG, EUCTR, ISRCTN, WHO, PubMed to be added
+
 The mechanisms used include
 * Downloading XML files directly from a source's API, (e.g. for ClicalTrials.gov, PubMed)
 * Scraping web pages and generating the XML files (e.g. for ISRCTN, EUCTR, Yoda, BioLincc)
 * Downloading CSV files and converrting the data into XML files.
 
-The types of download are listed below. A particualr source will have a default download type, dependent on the availability of an API, exposure of 'date last revised' etc. The default type can be overwritten by the input parameters.
+The types of download are listed below. A particular source will have a default download type, dependent on the availability of an API, exposure of 'date last revised' etc. The default type can be overwritten by the input parameters.
 <br/><br/>
+
+The format of the XML files created vary from source to source but represent the initial stage in the process of converting the source data into a consistent schema.
+
+### Parameters
+The system is currently a consiole app, and takes 3 parameters
+* A 6 digit integer representing the source (e.g. 100120 is Clinical Trials,gov)
+* A 2 digit intgere representing the download type (see listing below). If not provided the default download type will be read from the database.
+* A cut-off date for those download types that are date dependent. In such cases only files or pages that have been revised since the cutoff data provided will be downloaded.
+The plan is to wrap a UI around the app at some point.
+
+
+### PDownload Types
 10:	Full initial fetch (download)<br/>
 *Identifies and downloads XML files, one per record, from the entire data source.*
 
