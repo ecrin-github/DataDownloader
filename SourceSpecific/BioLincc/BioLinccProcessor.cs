@@ -10,13 +10,6 @@ namespace DataDownloader.biolincc
 {
     public class BioLINCC_Processor
 	{
-		HelperFunctions hp;
-	
-		
-		public BioLINCC_Processor()
-		{
-			hp = new HelperFunctions();
-		}
 
 		public BioLinccRecord GetStudyDetails(ScrapingBrowser browser, BioLinccDataLayer repo, int seqnum, HtmlNode row)
 		{
@@ -71,10 +64,10 @@ namespace DataDownloader.biolincc
 				string attribute_name = entryBold.InnerText.Trim();
 				string attribute_value = entries[i].InnerText;
 
-				if (attribute_name == "Accession Number") st.sd_sid = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+				if (attribute_name == "Accession Number") st.sd_sid = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 				if (attribute_name == "Study Type")
 				{
-					string study_type = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+					string study_type = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 					if (study_type.Contains("Clinical Trial"))
 					{
 						st.study_type_id = 11;
@@ -92,11 +85,11 @@ namespace DataDownloader.biolincc
 					}
 				}
 
-				if (attribute_name == "Study Period") st.study_period = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+				if (attribute_name == "Study Period") st.study_period = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 
 				if (attribute_name == "Date Prepared")
 				{
-					st.date_prepared = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+					st.date_prepared = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 					if (st.date_prepared == "N/A" || string.IsNullOrEmpty(st.date_prepared))
 					{
 						st.page_prepared_date = null;
@@ -106,7 +99,7 @@ namespace DataDownloader.biolincc
 						// date is in the forem of MMMM d, yyyy, and needs to be split accordingly
 						string date_prepared_string = st.date_prepared.Replace(", ", "|").Replace(",", "|").Replace(" ", "|");
 						string[] updated_parts = date_prepared_string.Split("|");
-						int month = hp.GetMonthAsInt(updated_parts[0]);
+						int month = DateHelpers.GetMonthAsInt(updated_parts[0]);
 						if (month > 0
 							&& Int32.TryParse(updated_parts[1], out int day)
 							&& Int32.TryParse(updated_parts[2], out int year))
@@ -118,7 +111,7 @@ namespace DataDownloader.biolincc
 
 				if (attribute_name == "Last Updated")
 				{
-					st.last_updated = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+					st.last_updated = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 					if (st.last_updated == "N/A" || string.IsNullOrEmpty(st.last_updated))
 					{
 						st.last_revised_date = null;
@@ -128,7 +121,7 @@ namespace DataDownloader.biolincc
 						// date is in the forem of MMMM d, yyyy, and needs to be split accordingly
 						string last_updated_string = st.last_updated.Replace(", ", "|").Replace(",", "|").Replace(" ", "|");
 						string[] updated_parts = last_updated_string.Split("|");
-						int month = hp.GetMonthAsInt(updated_parts[0]);
+						int month = DateHelpers.GetMonthAsInt(updated_parts[0]);
 						if (month > 0
 							&& Int32.TryParse(updated_parts[1], out int day)
 							&& Int32.TryParse(updated_parts[2], out int year))
@@ -247,7 +240,7 @@ namespace DataDownloader.biolincc
 								{
 									string pmc_id = attribute_value.Substring(pmc_pos + 14);
 									pmc_id = pmc_id.Replace("/", "");
-									pubmed_id = hp.GetPMIDFromNLM(browser, pmc_id);
+									pubmed_id = ScrapingHelpers.GetPMIDFromNLM(browser, pmc_id);
 								}
 							}
 
@@ -357,7 +350,7 @@ namespace DataDownloader.biolincc
 
 					if (attribute_name == "Commercial Use Data Restrictions")
 					{
-						string comm_use_restrictions = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+						string comm_use_restrictions = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 						if (comm_use_restrictions != null)
 						{
 							comm_use_data_restrics = (comm_use_restrictions.ToLower() == "yes") ? true : false; ;
@@ -366,14 +359,14 @@ namespace DataDownloader.biolincc
 
 					if (attribute_name == "Data Restrictions Based On Area Of Research")
 					{
-						string aor_use_restrictions = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+						string aor_use_restrictions = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 						if (aor_use_restrictions != null)
 						{
 							data_restrics_based_on_aor = (aor_use_restrictions.ToLower() == "yes") ? true : false;
 						}
 					}
 
-					if (attribute_name == "Specific Consent Restrictions") specific_consent_restrics = hp.CleanValue(attribute_value, attribute_name, entrySupp);
+					if (attribute_name == "Specific Consent Restrictions") specific_consent_restrics = ScrapingHelpers.AttValue(attribute_value, attribute_name, entrySupp);
 				}
 
 				// for the datasets, construct any consent constraints

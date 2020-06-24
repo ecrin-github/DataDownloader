@@ -17,15 +17,6 @@ namespace DataDownloader.yoda
 {
 	public class Yoda_Processor
 	{
-		HelperFunctions hp;
-
-
-		public Yoda_Processor()
-		{
-			hp = new HelperFunctions();
-		}
-
-
 		public List<Summary> GetStudyInitialDetails(WebPage homePage, int pagenum)
 		{
 			string cellValue = "";
@@ -252,7 +243,7 @@ namespace DataDownloader.yoda
 
 			if (dataLink != "" || dataComment != "")
 			{
-				SuppDoc matchingSD = hp.FindSuppDoc(supp_docs, "Data Definition Specification");
+				SuppDoc matchingSD = ScrapingHelpers.FindSuppDoc(supp_docs, "Data Definition Specification");
 				if (matchingSD != null)
 				{
 					matchingSD.url = dataLink;
@@ -285,7 +276,7 @@ namespace DataDownloader.yoda
 
 			if (crfLink != "" || crfComment != "")
 			{
-				SuppDoc matchingSD = hp.FindSuppDoc(supp_docs, "Annotated Case Report Form");
+				SuppDoc matchingSD = ScrapingHelpers.FindSuppDoc(supp_docs, "Annotated Case Report Form");
 				if (matchingSD != null)
 				{
 					matchingSD.url = crfLink;
@@ -421,7 +412,7 @@ namespace DataDownloader.yoda
 					int pmc_pos = st.primary_citation_link.IndexOf("/pmc/articles/");
 					string pmc_id = st.primary_citation_link.Substring(pmc_pos + 14);
 					pmc_id = pmc_id.Replace("/", "");
-					string pubmed_id = hp.GetPMIDFromNLM(browser, pmc_id);
+					string pubmed_id = ScrapingHelpers.GetPMIDFromNLM(browser, pmc_id);
 					if (pubmed_id != null && pubmed_id != "")
 					{
 						study_references.Add(new Reference(pubmed_id));
@@ -431,7 +422,7 @@ namespace DataDownloader.yoda
 				else
 				{
 					// else try and retrieve from linking out to the pubmed page
-					string pubmed_id = hp.GetPMIDFromPage(browser, st.primary_citation_link);
+					string pubmed_id = ScrapingHelpers.GetPMIDFromPage(browser, st.primary_citation_link);
 					if (pubmed_id != null && pubmed_id != "")
 					{
 						study_references.Add(new Reference(pubmed_id));

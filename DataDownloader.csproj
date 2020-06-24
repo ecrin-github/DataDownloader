@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="15.0.5" />
     <PackageReference Include="Dapper" Version="2.0.35" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.35" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.3" />
@@ -23,7 +24,6 @@
 
   <ItemGroup>
     <Folder Include="SourceSpecific\cgt\" />
-    <Folder Include="SourceSpecific\who\" />
     <Folder Include="SourceSpecific\pubmed\" />
   </ItemGroup>
 

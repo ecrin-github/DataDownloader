@@ -17,9 +17,9 @@ using DataDownloader.yoda;
 namespace DataDownloader
 {
 	
-	public class HelperFunctions
+	public static class ScrapingHelpers
 	{
-		public SuppDoc FindSuppDoc(List<SuppDoc> supp_docs, string name)
+		public static SuppDoc FindSuppDoc(List<SuppDoc> supp_docs, string name)
 		{
 			SuppDoc sd = null;
 			foreach (SuppDoc s in supp_docs)
@@ -34,34 +34,23 @@ namespace DataDownloader
 		}
 
 
-		public string CleanValue(string inputText, string attribute, HtmlNode entrySupp)
+		public static string AttValue(string inputText, string attribute_name, HtmlNode entrySupp)
 		{
-			// lose the bold and / or italic headings and return
-			// the trimmed content, minus any new lines / carriage returns
-			string attValue = inputText.Replace(attribute, "");
+			// drop the attribute name from the text
+			string attValue = inputText.Replace(attribute_name, "");
+
+			// drop any supplementary entry title
 			if (entrySupp != null)
 			{
 				attValue = attValue.Replace(entrySupp.InnerText, "");
 			}
+
+			// drop carriage returns and trim 
 			return attValue.Replace("\n", "").Replace("\r", "").Trim();
 		}
-
-
-		public int GetMonthAsInt(string month_name)
-		{
-			try
-			{
-				return (int)(Enum.Parse<MonthsFull>(month_name));
-			}
-			catch (ArgumentException)
-			{
-				return 0;
-			}
-
-		}	
 		
 		
-		public string GetPMIDFromNLM(ScrapingBrowser browser, string pmc_id)
+		public static string GetPMIDFromNLM(ScrapingBrowser browser, string pmc_id)
 		{
 			var options = new JsonSerializerOptions
 			{
@@ -89,7 +78,7 @@ namespace DataDownloader
 		}
 
 
-		public string GetPMIDFromPage(ScrapingBrowser browser, string citation_link)
+		public static string  GetPMIDFromPage(ScrapingBrowser browser, string citation_link)
 		{
 			string pmid = "";
 			// construct url
@@ -116,36 +105,7 @@ namespace DataDownloader
 			return pmid;
 		}
 
-
-		public string CreateMD5(string input)
-		{
-			// Use input string to calculate MD5 hash
-			using (MD5 md5 = MD5.Create())
-			{
-				byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
-				byte[] hashBytes = md5.ComputeHash(inputBytes);
-
-				// return as base64 string
-				// 16 bytes = (5*4) characters + XX==, 
-				// 24 rather than 32 hex characters
-				return Convert.ToBase64String(hashBytes);
-
-				/*
-				// Convert the byte array to hexadecimal string
-				StringBuilder sb = new StringBuilder();
-				for (int i = 0; i < hashBytes.Length; i++)
-				{
-					sb.Append(hashBytes[i].ToString("X2"));
-				}
-				return sb.ToString();
-				*/
-			}
-		}
 	}
 
-	public enum MonthsFull
-	{
-		January = 1, February, March, April, May, June,
-		July, August, September, October, November, December
-	};
+
 }

@@ -6,6 +6,7 @@ using DataDownloader.yoda;
 using DataDownloader.biolincc;
 using DataDownloader.euctr;
 using DataDownloader.isrctn;
+using DataDownloader.who;
 using DataDownloader.pubmed;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
@@ -41,6 +42,16 @@ namespace DataDownloader
 				WriteLine("Sorry - there must be a valid cutoff date for a harvest of type 2");
 				return;
 			}
+
+			string source_file = "";
+			if (source_id == 100115)   // needs changing to a source property by adding to table
+            {
+				// will be type 1 harvest (all of content) but will 
+				// require a path to the file
+				source_file = GetSourceFile(args);
+
+			}
+
 
 			browser.AllowAutoRedirect = true;
 			browser.AllowMetaRedirect = true;
@@ -78,6 +89,8 @@ namespace DataDownloader
 					}
 				case 100115:
 					{
+						WHO_Controller who_controller = new WHO_Controller(source_file, sf_id, source, logging_repo);
+						who_controller.ProcessFile();
 						break;
 					}
 				case 100135:
@@ -164,6 +177,20 @@ namespace DataDownloader
 			return new DateTime(Int32.Parse(args[2].Substring(0, 4)),
 								Int32.Parse(args[2].Substring(5, 2)),
 								Int32.Parse(args[2].Substring(8, 2)));
+		}
+
+
+		private static string GetSourceFile(string[] args)
+		{
+			if (args.Length < 3)
+			{
+				WriteLine("Sorry - For this source, ");
+				WriteLine("(that uses a previously downloaded file as the data source)");
+				WriteLine("You must include a fulklk poath to that file as the 3rd parameter");
+				return null;
+			}
+
+			return args[2];
 		}
 	}
 }
