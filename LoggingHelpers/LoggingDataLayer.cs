@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using System.Linq;
 using System.Collections.Generic;
 using PostgreSQLCopyHelper;
+using DataDownloader.who;
 
 namespace DataDownloader
 {
@@ -160,6 +161,40 @@ namespace DataDownloader
 		}
 
 
+		public void UpdateDownloadLog(int source_id, string sd_id, string remote_url,
+						 int sf_id, DateTime? last_revised_date, string full_path)
+		{
+			// Get the source data record and modify it
+			// or add a new one...
+			StudyFileRecord file_record = FetchStudyFileRecord(sd_id, source_id);
+
+			if (file_record == null)
+			{
+				// this needs to have a new record
+				// check last revised date....???
+				// new record
+				file_record = new StudyFileRecord(source_id, sd_id, remote_url, sf_id,
+												last_revised_date, full_path);
+				InsertStudyFileRec(file_record);
+			}
+			else
+			{
+				// update record
+				file_record.remote_url = remote_url;
+				file_record.last_sf_id = sf_id;
+				file_record.last_revised = last_revised_date;
+				file_record.download_status = 2;
+				file_record.download_datetime = DateTime.Now;
+				file_record.local_path = full_path;
+
+				// Update file record
+				StoreStudyFileRec(file_record);
+			}
+
+			Console.WriteLine(sd_id);
+		}
+
+
 		public ulong StoreRecs(PostgreSQLCopyHelper<StudyFileRecord> copyHelper, IEnumerable<StudyFileRecord> entities)
 		{
 			using (var conn = new NpgsqlConnection(connString))
@@ -170,6 +205,31 @@ namespace DataDownloader
 			}
 		}
 
+
+		public int InsertSecondaryId(Secondary_Id secid)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				return (int)conn.Insert<Secondary_Id>(secid);
+			}
+		}
+
+
+		public int InsertStudyFeature(StudyFeature f)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				return (int)conn.Insert<StudyFeature>(f);
+			}
+		}
+
+		public int InsertStudyCondition(StudyCondition c)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				return (int)conn.Insert<StudyCondition>(c);
+			}
+		}
 	}
 }
 

@@ -81,7 +81,7 @@ namespace DataDownloader
 						if (day_s.Length == 1) day_s = "0" + day_s;
 						return_value = year_s + "-" + month_s + "-" + day_s;
 					}
-					else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (19|20)\d{2}$").Success)
+					else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (19|20)\d{2}$").Success)
 					{
 						// date in form (d)d MMM yyyy
 						int dash1 = datestring.IndexOf(' ');
@@ -93,7 +93,7 @@ namespace DataDownloader
 						if (day_s.Length == 1) day_s = "0" + day_s;
 						return_value = year_s + "-" + month_s + "-" + day_s;
 					}
-					else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (January|February|March|April|June|July|August|September|October|November|December) (19|20)\d{2}$").Success)
+					else if (Regex.Match(datestring, @"^(0?[1-9]|1\d|2\d|3[0-1]) (January|February|March|April|May|June|July|August|September|October|November|December) (19|20)\d{2}$").Success)
 					{
 						// date in form (d)d MMMM yyyy
 						int dash1 = datestring.IndexOf(' ');
@@ -150,6 +150,20 @@ namespace DataDownloader
 			}
 			return time_units;
 		}
+
+
+		public static DateTime? FetchDateTimeFromISO(string iso_string)
+        {
+			DateTime? dt = null;
+			// iso_string assumed to be in format yyyy-mm-dd
+			int year = Int32.Parse(iso_string.Substring(0, 4));
+			int month = Int32.Parse(iso_string.Substring(5, 2));
+			int day = Int32.Parse(iso_string.Substring(8,2));
+			dt = new DateTime(year, month, day);
+			return dt;
+
+		}
+
 	}
 
 

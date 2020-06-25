@@ -48,6 +48,7 @@ namespace DataDownloader.who
 
 			using (var reader = new StreamReader(sourcefile, true))
 			{
+				XmlSerializer writer = new XmlSerializer(typeof(WHORecord)); 
 				using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
 				{
 					csv.Configuration.HasHeaderRecord = false;
@@ -56,18 +57,27 @@ namespace DataDownloader.who
 
 					foreach (WHO_SourceRecord sr in records)
 					{
-						WHORecord r = processor.ProcessStudyDetails(sr);
+						WHORecord r = processor.ProcessStudyDetails(sr, logging_repo);
 
 						n++;
 						Console.WriteLine(n);
 
 						if (r != null)
                         {
-							// write out file to the correct folder
+							// Write out study record as XML, log the download
+							string file_base = r.folder_name;
+							if (!Directory.Exists(file_base))
+                            {
+								Directory.CreateDirectory(file_base);
+                            }
+							string file_name = r.sd_sid + ".xml";
+							string full_path = Path.Combine(file_base, file_name);
 
+							file_writer.WriteWHOSourcedFile(writer, r, full_path);
+							logging_repo.UpdateDownloadLog(r.source_id, r.sd_sid, r.remote_url, sf_id,
+															   DateHelpers.FetchDateTimeFromISO(r.record_date), full_path);
 
-							// log the file download
-                        }
+						}
 					}
 				}
 			}

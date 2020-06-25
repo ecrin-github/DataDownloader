@@ -186,48 +186,94 @@ namespace DataDownloader.who
 		public string ipd_description { get; set; }
 		public string results_date_completed { get; set; }
 		public string results_yes_no { get; set; }
+		public string folder_name { get; set; }
 
+		public string design_string { get; set; }
+		public string phase_string { get; set; }
+
+		public List<string> country_list { get; set; }
 		public List<Secondary_Id> secondary_ids { get; set; }
 		public List<StudyFeature> study_features { get; set; }
-		public List<string> country_list { get; set; }
-		public List<string> condition_list { get; set; }
-		public List<string> phase_list { get; set; }
+		public List<StudyCondition> condition_list { get; set; }
 	}
 
-
+	[Table("sf.secondary_ids")]
 	public class Secondary_Id
 	{
-		public int source_a_id { get; set; }
-		public string sd_a_sid { get; set; }
-		public int source_b_id { get; set; }
-		public string sd_b_sid { get; set; }
+		public string sd_sid{ get; set; }
 		public string source_field { get; set; }
-
-		public Secondary_Id(string _sd_a_sid, string _sd_b_sid, 
-			                string _source_field)
-        {
-			sd_a_sid = _sd_a_sid;
-			sd_b_sid = _sd_b_sid;
-			source_field = _source_field;
+		public string sec_id { get; set; }
+		public string processed_id { get; set; }
+		public int? sec_id_source { get; set; }
+		public bool ShouldSerializesec_id_source()
+		{
+			return sec_id_source.HasValue;
 		}
+
+		public Secondary_Id(string _sd_sid, string _source_field, string _sec_id,
+							string _processed_id, int? _sec_id_source)
+        {
+
+			sd_sid = _sd_sid;
+			source_field = _source_field;
+			sec_id = _sec_id;
+			processed_id = _processed_id;
+			sec_id_source = _sec_id_source;
+		}
+
+		public Secondary_Id()
+		{ }
 	}
 
-
+	[Table("sf.study_features")]
 	public class StudyFeature
 	{
+		public string sd_sid { get; set; }
 		public int ftype_id { get; set; }
 		public string ftype { get; set; }
 		public int fvalue_id { get; set; }
 		public string fvalue { get; set; }
 
-		public StudyFeature(int _ftype_id, string _ftype,
+		public StudyFeature(string _sd_sid, int _ftype_id, string _ftype,
 			                int _fvalue_id, string _fvalue)
 		{
+			sd_sid = _sd_sid; 
 			ftype_id = _ftype_id;
 			ftype = _ftype;
 			fvalue_id = _fvalue_id;
 			fvalue = _fvalue;
 		}
+
+		public StudyFeature()
+		{ }
 	}
+
+	[Table("sf.study_conditions")]
+	public class StudyCondition
+	{
+		public string sd_sid { get; set; }
+		public string condition { get; set; }
+		public string code { get; set; }
+		public string code_system { get; set; }
+
+		public StudyCondition(string _sd_sid, string _condition)
+		{ 
+			sd_sid = _sd_sid;
+			condition = _condition;
+		}
+
+		public StudyCondition(string _sd_sid, string _condition,
+							   string _code, string _code_system)
+		{
+			sd_sid = _sd_sid;
+			condition = _condition;
+			code = _code;
+			code_system = _code_system;
+		}
+
+		public StudyCondition()
+		{ }
+	}
+
 
 }
