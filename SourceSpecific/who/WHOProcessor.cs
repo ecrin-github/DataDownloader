@@ -170,79 +170,104 @@ namespace DataDownloader.who
 					study_features.Add(new StudyFeature(sd_sid, 23, "Intervention model", 315, "Factorial assignment"));
 				}
 
-				if (design.Contains("open label")
-			     || design.Contains("open-label")
-				 || design.Contains("no mask")
-				 || design.Contains("masking not used")
-				 || design.Contains("not blinded")
-				 || design.Contains("no blinding")
-				 || design.Contains("no masking")
-				 || design.Contains("masking: none")
-				 )
-				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 500, "None (Open Label)"));
-				}
-				else if (design.Contains("single blind")
-				 || design.Contains("single-blind")
-				 || design.Contains("single - blind")
-				 || design.Contains("masking: single")
-				 || design.Contains("outcome assessor blinded")
-				 || design.Contains("participant blinded")
-				 || design.Contains("investigator blinded")
-				 || design.Contains("blinded (patient/subject)")
-				 || design.Contains("blinded (assessor)")
-				 )
-				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 505, "Single"));
-				}
-				else if (design.Contains("double blind")
-				 || design.Contains("double-blind") 
-				 || design.Contains("double - blind")
-				 || design.Contains("masking: double")
-				 || design.Contains("participant and investigator blinded")
-				 )
-				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 510, "Double"));
-				}
-				else if (design.Contains("triple blind")
-				 || design.Contains("triple-blind")
-				 || design.Contains("blinded (patient/subject, caregiver, investigator/therapist, assessor)")
-				 )
-				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 515, "Triple"));
-				}
-				else if (design.Contains("quadruple blind")
-				 || design.Contains("quadruple-blind"))
-				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 520, "Quadruple"));
-				}
-				else if (design.Contains("masking used")
-				 || design.Contains("blinding used"))
-				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 502, "Blinded (no details)"));
-				}
-				else if (design.Contains("masking:not applicable")
-				 || design.Contains("blinding:not applicable")
-				 || design.Contains("masking not applicable")
-				 || design.Contains("blinding not applicable")
-				 )
+				if (r.study_type == "Observational")
 				{
 					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 599, "Not applicable"));
 				}
-				else if (design.Contains("mask")
-				 || design.Contains("blind"))
+				else
 				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 5000, design_list));
+					if (design.Contains("open label")
+					 || design.Contains("open-label")
+					 || design.Contains("no mask")
+					 || design.Contains("masking not used")
+					 || design.Contains("not blinded")
+					 || design.Contains("non-blinded")
+					 || design.Contains("no blinding")
+					 || design.Contains("no masking")
+					 || design.Contains("masking: none")
+					 || design.Contains("blinding: open")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 500, "None (Open Label)"));
+					}
+					else if (design.Contains("single blind")
+					 || design.Contains("single-blind")
+					 || design.Contains("single - blind")
+					 || design.Contains("masking: single")
+					 || design.Contains("outcome assessor blinded")
+					 || design.Contains("participant blinded")
+					 || design.Contains("investigator blinded")
+					 || design.Contains("blinded (patient/subject)")
+					 || design.Contains("blinded (investigator/therapist)")
+					 || design.Contains("blinded (assessor)")
+					 || design.Contains("blinded (data analyst)")
+					 || design.Contains("uni-blind")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 505, "Single"));
+					}
+					else if (design.Contains("double blind")
+					 || design.Contains("double-blind")
+					 || design.Contains("doble-blind")
+					 || design.Contains("double - blind")
+					 || design.Contains("double-masked")
+					 || design.Contains("masking: double")
+					 || design.Contains("blinded (assessor, data analyst)")
+					 || design.Contains("blinded (patient/subject, investigator/therapist")
+					 || design.Contains("masking:participant, investigator, outcome assessor")
+					 || design.Contains("participant and investigator blinded")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 510, "Double"));
+					}
+					else if (design.Contains("triple blind")
+					 || design.Contains("triple-blind")
+					 || design.Contains("blinded (patient/subject, caregiver, investigator/therapist, assessor")
+					 || design.Contains("masking:participant, investigator, outcome assessor")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 515, "Triple"));
+					}
+					else if (design.Contains("quadruple blind")
+					 || design.Contains("quadruple-blind")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 520, "Quadruple"));
+					}
+					else if (design.Contains("masking used")
+					 || design.Contains("blinding used"))
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 502, "Blinded (no details)"));
+					}
+					else if (design.Contains("masking:not applicable")
+					 || design.Contains("blinding:not applicable")
+					 || design.Contains("masking not applicable")
+					 || design.Contains("blinding not applicable")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 599, "Not applicable"));
+					}
+					else if (design.Contains("masking: unknown")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 525, "Not provided"));
+					}
+					else if (design.Contains("mask")
+					 || design.Contains("blind")
+					 )
+					{
+						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 5000, design_list));
+					}
 				}
 			}
-
 
 			string phase_list = WHOHelpers.tidy_string(sr.phase);
 			if (phase_list != null)
 			{
 				r.phase_string = phase_list;
 				string phase = phase_list.ToLower();
-				if (phase != "not selected"	&& phase != "not applicable" && phase != "n/a")
+				if (phase != "not selected"	&& phase != "not applicable" 
+					&& phase != "na" && phase != "n/a")
 				{
 					if (phase == "phase 0"
 					 || phase == "phase-0"
@@ -491,13 +516,14 @@ namespace DataDownloader.who
 					string rsq = "’";
 					condition_list = condition_list.Replace("&lt;", "<").Replace("&gt;", ">");
 					condition_list = condition_list.Replace("&#39;", rsq).Replace("&rsquo;", rsq);
-					// replace line breaks with semi-colons, and split
+
+					// replace line breaks and hashes with semi-colons, and split
 					condition_list = condition_list.Replace("<br>", ";").Replace("<br/>", ";");
-					
+					condition_list = condition_list.Replace("#", ";");
 					List<string> conds = condition_list.Split(";").ToList();
 					foreach (string s in conds)
                     {
-						char[] chars_to_lose = { ' ', '(', ')', '.', '-', ';'}; 
+						char[] chars_to_lose = { ' ', '(', '.', '-', ';'}; 
 						string s1 = s.Trim(chars_to_lose);
 						if (s1 != "" && s1.Length > 4)
 						{
@@ -506,33 +532,62 @@ namespace DataDownloader.who
 
 							// Need a regex here to pick up ICD codes
 							string code = "", code_system = "";
-							if (Regex.Match(s1, @"^[A-Z]\d{2}(.\d)? ").Success)
-                            {
+
+							if (s1.Contains("generalization"))
+							{
+								string code_string = "";
+								if (Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}.\d:").Success)
+								{
+									code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}.\d:").Value.Trim();
+									code = Regex.Match(code_string, @"[A-Z]\d{2}.\d:$").Value.Trim(':');
+								}
+
+								else if (Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}:").Success)
+								{
+									code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d{2} - \[generalization [A-Z]\d{2}:").Value.Trim();
+									code = Regex.Match(code_string, @"[A-Z]\d{2}.\d:$").Value.Trim(':');
+								}
+
+								else if (Regex.Match(s1, @"^[A-Z]\d{2}.\d - \[generalization [A-Z]\d{2}").Success)
+								{
+									code_string = Regex.Match(s1, @"^[A-Z]\d{2}.\d - \[generalization [A-Z]\d{2}:").Value.Trim();
+									code = Regex.Match(code_string, @"[A-Z]\d{2}:$").Value.Trim(':');
+								}
+								
+								code_system = "ICD 10";
+								s1 = s1.Substring(code_string.Length).Trim(']').Trim();
+							}
+
+							else if (Regex.Match(s1, @"^[A-Z]\d{2}(.\d)? ").Success)
+							{
 								code = Regex.Match(s1, @"^[A-Z]\d{2}(.\d)? ").Value.Trim();
 								code_system = "ICD 10";
 								s1 = s1.Substring(code.Length).Trim();
 							}
 
-							if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2} ").Success)
+							else if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2} ").Success)
 							{
 								code = Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2} ").Value.Trim();
 								code_system = "ICD 10";
 								s1 = s1.Substring(code.Length).Trim();
 							}
 
-							if (Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2} ").Success)
+							else if (Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2} ").Success)
 							{
 								code = Regex.Match(s1, @"^[A-Z]\d{2} - [A-Z]\d{2} ").Value.Trim();
 								code_system = "ICD 10";
 								s1 = s1.Substring(code.Length).Trim();
 							}
 
-							if (Regex.Match(s1, @"^[A-Z]\d{3} ").Success)
+							else if (Regex.Match(s1, @"^[A-Z]\d{3} ").Success)
 							{
 								code = Regex.Match(s1, @"^[A-Z]\d{3} ").Value.Trim();
 								code_system = "ICD 10";
 								s1 = s1.Substring(code.Length).Trim();
 							}
+
+							char[] chars_to_lose2 = {' ', '-', ','};
+							s1 = s1.Trim(chars_to_lose2);
 
 							// check not duplicated
 							bool add_condition = true;
@@ -540,13 +595,20 @@ namespace DataDownloader.who
 							{
 								foreach (StudyCondition sc in conditions)
 								{
-									if (s1 == sc.condition)
+									if (s1.ToLower() == sc.condition.ToLower())
 									{
 										add_condition = false;
 										break;
 									}
 								}
 							}
+
+							// check not a too broad ICD10 classification
+							if (Regex.Match(s1, @"^[A-Z]\d{2}-[A-Z]\d{2}$").Success)
+							{
+								add_condition = false;
+							}
+
 							if (add_condition)
 							{
 								if (code == "")
@@ -583,14 +645,13 @@ namespace DataDownloader.who
 						if (s1.Length >= 4 && s1 != sd_sid)
 						{
 							string s2 = s1.ToLower();
-							if (!(s2.StartsWith("none"))
+							if (Regex.Match(s2, @"\d").Success   // has to include at least 1 number
+								&& !(s2.StartsWith("none"))
 								&& !(s2.StartsWith("nil"))
 								&& !(s2.StartsWith("not "))
 								&& !(s2.StartsWith("date"))
 								&& !(s2.StartsWith("version"))
-								&& !(s2.StartsWith("??"))
-								&& s2 != "null"
-								&& s2 != "n.a.")
+								&& !(s2.StartsWith("??")))
 							{
 								AddSecondaryId(existing_ids, sd_sid, source_field, s1);
 							}
@@ -604,163 +665,212 @@ namespace DataDownloader.who
 		private void AddSecondaryId(List<Secondary_Id> existing_ids, string sd_sid, 
 			                         string source_field, string sec_id)
 		{
+			
+			string interim_id = "", processed_id = null;
+			int? sec_id_source = null;
+			if (sec_id.Contains("NCT"))
+			{
+				interim_id = sec_id.Replace("NCT ", "NCT");
+				interim_id = interim_id.Replace("NCTNumber", "");
+				if (Regex.Match(interim_id, @"NCT[0-9]{8}").Success)
+				{
+					processed_id = Regex.Match(interim_id, @"NCT[0-9]{8}").Value;
+					sec_id_source = 100120;
+				}
+				if (processed_id == "NCT11111111" || processed_id == "NCT99999999"
+					|| processed_id == "NCT12345678" || processed_id == "NC87654321")
+				{
+					// remove these 
+					processed_id = null;
+					sec_id_source = null;
+				}
+			}
+
+			else if (Regex.Match(sec_id, @"[0-9]{4}-[0-9]{6}-[0-9]{2}").Success)
+			{
+				processed_id = Regex.Match(sec_id, @"[0-9]{4}-[0-9]{6}-[0-9]{2}").Value;
+				sec_id_source = 100123;
+
+				if (processed_id == "--------------")
+				{
+					// remove these 
+					processed_id = null;
+					sec_id_source = null;
+				}
+			}
+				
+			else if (sec_id.Contains("ISRCTN"))
+			{
+				interim_id = interim_id.Replace("(ISRCTN)", "");
+				interim_id = interim_id.Replace("ISRCTN(International", "");
+				interim_id = sec_id.Replace("ISRCTN ", "ISRCTN");
+				interim_id = interim_id.Replace("ISRCTN: ", "ISRCTN");
+				interim_id = interim_id.Replace("ISRCTNISRCTN", "ISRCTN");
+
+				if (Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Success)
+				{
+					processed_id = Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Value;
+					sec_id_source = 100126;
+				}
+			}
+
+			else if (Regex.Match(sec_id, @"ACTRN[0-9]{14}").Success)
+			{
+				processed_id = Regex.Match(sec_id, @"ACTRN[0-9]{14}").Value;
+				sec_id_source = 100116;
+			}
+
+			else if(Regex.Match(sec_id, @"DRKS[0-9]{8}").Success)
+			{
+				processed_id = Regex.Match(sec_id, @"DRKS[0-9]{8}").Value;
+				sec_id_source = 100124;
+			}
+
+			else if(Regex.Match(sec_id, @"CTRI/[0-9]{4}/[0-9]{2,3}/[0-9]{6}").Success)
+			{
+				processed_id = Regex.Match(sec_id, @"CTRI/[0-9]{4}/[0-9]{2,3}/[0-9]{6}").Value;
+				processed_id = processed_id.Replace('/', '-');  // internal representation for CTRI
+				sec_id_source = 100121;
+			}
+
+			else if(Regex.Match(sec_id, @"1111-[0-9]{4}-[0-9]{4}").Success)
+			{
+				processed_id = "U" + Regex.Match(sec_id, @"1111-[0-9]{4}-[0-9]{4}").Value;
+				sec_id_source = 100115;
+			}
+
+			else if(Regex.Match(sec_id, @"UMIN[0-9]{9}").Success || Regex.Match(sec_id, @"UMIN-CTR[0-9]{9}").Success)
+			{
+				processed_id = "JPRN-UMIN" + Regex.Match(sec_id, @"[0-9]{9}").Value;
+				sec_id_source = 100127;
+			}
+
+			else if (Regex.Match(sec_id, @"jRCTs[0-9]{9}").Success)
+			{
+				processed_id = "JPRN-jRCTs" + Regex.Match(sec_id, @"[0-9]{9}").Value;
+				sec_id_source = 100127;
+			}
+
+			else if (Regex.Match(sec_id, @"jRCT[0-9]{10}").Success)
+			{
+				processed_id = "JPRN-jRCT" + Regex.Match(sec_id, @"[0-9]{10}").Value;
+				sec_id_source = 100127;
+			}
+
+			else if (sec_id.StartsWith("JPRN"))
+			{
+				if (Regex.Match(sec_id, @"^[0-9]{8}$").Success)
+				{
+					processed_id = "JPRN-UMIN" + Regex.Match(sec_id, @"[0-9]{8}").Value;
+					sec_id_source = 100127;
+				}
+				else
+				{
+					processed_id = sec_id;
+					sec_id_source = 100127;
+				}
+			}
+			else if (sec_id.StartsWith("RBR"))
+			{
+				sec_id_source = 100117;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("ChiCTR"))
+			{
+				sec_id_source = 100118;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("KCT"))
+			{
+				sec_id_source = 100119;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("RPCEC"))
+			{
+				sec_id_source = 100122;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("DRKS"))
+			{
+				sec_id_source = 100124;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("IRCT"))
+			{
+				sec_id_source = 100125;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("PACTR"))
+			{
+				sec_id_source = 100128;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("PER"))
+			{
+				sec_id_source = 100129;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("SLCTR"))
+			{
+				sec_id_source = 100130;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("TCTR"))
+			{
+				sec_id_source = 100131;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("NL") || sec_id.StartsWith("NTR"))
+			{
+				sec_id_source = 100132;
+				processed_id = sec_id;
+			}
+			else if (sec_id.StartsWith("LBCTR"))
+			{
+				sec_id_source = 101989;
+				processed_id = sec_id;
+			}
+
+
+     		if (sd_sid.StartsWith("RBR"))
+			{
+				// Extract Brazilian ethics Ids
+				if (Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Success)
+				{
+					processed_id = Regex.Match(sec_id, @"[0-9]{8}.[0-9].[0-9]{4}.[0-9]{4}").Value;
+					sec_id_source = 102000;  // Brasilian regulatory authority, ANVISA
+					// number is an ethics approval submission id
+				}
+
+				if (Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Success)
+				{
+					processed_id = Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Value;
+					sec_id_source = 102001;  // Brasilian etyhics committee approval number
+				}
+			}
+
+			if (processed_id == null)
+            {
+				processed_id = sec_id;
+     		}
+
 			// has this id been added before?
 			bool add_id = true;
 			if (existing_ids.Count > 0)
 			{
 				foreach (Secondary_Id s in existing_ids)
 				{
-					if (sec_id == s.sec_id)
-                    {
+					if (processed_id == s.processed_id)
+					{
 						add_id = false;
 						break;
 					}
 				}
 			}
 			if (add_id)
-            {
-				string interim_id = "", processed_id = null;
-				int? sec_id_source = null;
-				if (sec_id.Contains("NCT"))
-				{
-					interim_id = sec_id.Replace("NCT ", "NCT");
-					interim_id = interim_id.Replace("NCTNumber", "");
-					if (Regex.Match(interim_id, @"NCT[0-9]{8}").Success)
-					{
-						processed_id = Regex.Match(interim_id, @"NCT[0-9]{8}").Value;
-						sec_id_source = 100120;
-					}
-					if (processed_id == "NCT11111111" || processed_id == "NCT99999999"
-						|| processed_id == "NCT12345678" || processed_id == "NC87654321")
-					{
-						// remove these 
-						processed_id = null;
-						sec_id_source = null;
-					}
-				}
-
-				if (sec_id.Contains("ISRCTN"))
-				{
-					interim_id = interim_id.Replace("(ISRCTN)", "");
-					interim_id = interim_id.Replace("ISRCTN(International", "");
-					interim_id = sec_id.Replace("ISRCTN ", "ISRCTN");
-					interim_id = interim_id.Replace("ISRCTN: ", "ISRCTN");
-					interim_id = interim_id.Replace("ISRCTNISRCTN", "ISRCTN");
-
-					if (Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Success)
-					{
-						processed_id = Regex.Match(interim_id, @"ISRCTN[0-9]{8}").Value;
-						sec_id_source = 100126;
-					}
-				}
-
-
-				if (Regex.Match(sec_id, @"[0-9]{4}-[0-9]{6}-[0-9]{2}").Success)
-				{
-					processed_id = Regex.Match(sec_id, @"[0-9]{4}-[0-9]{6}-[0-9]{2}").Value;
-					sec_id_source = 100123;
-
-					if (processed_id == "--------------")
-					{
-						// remove these 
-						processed_id = null;
-						sec_id_source = null;
-					}
-				}
-
-				if (Regex.Match(sec_id, @"ACTRN[0-9]{14}").Success)
-				{
-					processed_id = Regex.Match(sec_id, @"ACTRN[0-9]{14}").Value;
-					sec_id_source = 100116;
-				}
-
-				if (Regex.Match(sec_id, @"ACTRN[0-9]{14}").Success)
-				{
-					processed_id = Regex.Match(sec_id, @"ACTRN[0-9]{14}").Value;
-					sec_id_source = 100116;
-				}
-
-				if (Regex.Match(sec_id, @"CTRI/[0-9]{4}/[0-9]{2,3}/[0-9]{6}").Success)
-				{
-					processed_id = Regex.Match(sec_id, @"CTRI/[0-9]{4}/[0-9]{2,3}/[0-9]{6}").Value;
-					processed_id = processed_id.Replace('/', '-');  // internal representation for CTRI
-					sec_id_source = 100121;
-				}
-
-				if (Regex.Match(sec_id, @"1111-[0-9]{4}-[0-9]{4}").Success)
-				{
-					processed_id = "U" + Regex.Match(sec_id, @"1111-[0-9]{4}-[0-9]{4}").Value;
-					sec_id_source = 100115;
-				}
-
-				if (sec_id.StartsWith("JPRN"))
-				{
-					sec_id_source = 100127;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("RBR"))
-				{
-					sec_id_source = 100117;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("ChiCTR"))
-				{
-					sec_id_source = 100118;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("KCT"))
-				{
-					sec_id_source = 100119;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("RPCEC"))
-				{
-					sec_id_source = 100122;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("DRKS"))
-				{
-					sec_id_source = 100124;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("IRCT"))
-				{
-					sec_id_source = 100125;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("PACTR"))
-				{
-					sec_id_source = 100128;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("PER"))
-				{
-					sec_id_source = 100129;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("SLCTR"))
-				{
-					sec_id_source = 100130;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("TCTR"))
-				{
-					sec_id_source = 100131;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("NL") || sec_id.StartsWith("NTR"))
-				{
-					sec_id_source = 100132;
-					processed_id = sec_id;
-				}
-				else if (sec_id.StartsWith("LBCTR"))
-				{
-					sec_id_source = 101989;
-					processed_id = sec_id;
-				}
-				
+			{
 				Secondary_Id secid = new Secondary_Id(sd_sid, source_field, sec_id, processed_id, sec_id_source);
-				existing_ids.Add(secid);
+			    existing_ids.Add(secid);
 			}
         }
 
