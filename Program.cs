@@ -7,6 +7,7 @@ using DataDownloader.biolincc;
 using DataDownloader.euctr;
 using DataDownloader.isrctn;
 using DataDownloader.who;
+using DataDownloader.vivli;
 using DataDownloader.pubmed;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
@@ -95,6 +96,16 @@ namespace DataDownloader
 					}
 				case 100135:
 					{
+						break;
+					}
+				case 101940:
+					{
+						// vivli
+						// second parameter to be added here to control exact functions used
+						// and table creation etc.
+						Vivli_Controller vivli_controller = new Vivli_Controller(browser, sf_id, source, logging_repo);
+						vivli_controller.FetchURLDetails();
+						vivli_controller.LoopThroughPages();
 						break;
 					}
 			}

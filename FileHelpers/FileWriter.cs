@@ -4,6 +4,7 @@ using System.Xml.Serialization;
 using DataDownloader.biolincc;
 using DataDownloader.yoda;
 using DataDownloader.who;
+using DataDownloader.vivli;
 
 
 namespace DataDownloader
@@ -43,6 +44,17 @@ namespace DataDownloader
 
 
 		public void WriteWHOSourcedFile(XmlSerializer writer, WHORecord st, string full_path)
+		{
+			if (File.Exists(full_path))
+			{
+				File.Delete(full_path);
+			}
+			FileStream file = System.IO.File.Create(full_path);
+			writer.Serialize(file, st);
+			file.Close();
+		}
+
+		public void WriteVivliFile(XmlSerializer writer, VivliRecord st, string full_path)
 		{
 			if (File.Exists(full_path))
 			{
