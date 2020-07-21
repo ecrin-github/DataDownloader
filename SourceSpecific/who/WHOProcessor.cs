@@ -12,15 +12,21 @@ namespace DataDownloader.who
 		{
 			WHORecord r = new WHORecord();
 
-			string sd_sid = sr.TrialID.Replace("/", "-").Replace("\\", "-").Replace(".", "-");
+			string sd_sid = sr.TrialID.Replace("/", "-").Replace(@"\", "-").Replace(".", "-").Trim();
 			r.sd_sid = sd_sid;
-			int source_id = get_reg_source(sr.TrialID);
+			int source_id = get_reg_source(sd_sid);
 
 			if (source_id == 100120 || source_id == 100123 || source_id == 100126)
 			{ 
 				// no need to process these - details input directly from registry
 				// (for CGT, ISRCTN, EU CTR)
 				return null; 
+			}
+
+			if (sd_sid == null || sd_sid == "null")
+			{
+				// Happens with one Dutch trial
+				return null;
 			}
 
 			// otherwise proceed
@@ -144,7 +150,7 @@ namespace DataDownloader.who
 				 || design.Contains("non-randomised")
 				 || design.Contains("nonrandomised"))
 				{
-					study_features.Add(new StudyFeature(sd_sid, 22, "Allocation type", 210, "Nonrandomised"));
+					study_features.Add(new StudyFeature(22, "Allocation type", 210, "Nonrandomised"));
 					nonrandomised = true;
 				}
 
@@ -152,27 +158,27 @@ namespace DataDownloader.who
 					 (  design.Contains("randomized")
 					 || design.Contains("randomised")))
 				{
-					study_features.Add(new StudyFeature(sd_sid, 22, "Allocation type", 205, "Randomised"));
+					study_features.Add(new StudyFeature(22, "Allocation type", 205, "Randomised"));
 				}
 
 				if (design.Contains("parallel"))
 				{
-					study_features.Add(new StudyFeature(sd_sid, 23, "Intervention model", 305, "Parallel assignment"));
+					study_features.Add(new StudyFeature(23, "Intervention model", 305, "Parallel assignment"));
 				}
 
 				if (design.Contains("crossover"))
 				{
-					study_features.Add(new StudyFeature(sd_sid, 23, "Intervention model", 310, "Crossover assignment"));
+					study_features.Add(new StudyFeature(23, "Intervention model", 310, "Crossover assignment"));
 				}
 
 				if (design.Contains("factorial"))
 				{
-					study_features.Add(new StudyFeature(sd_sid, 23, "Intervention model", 315, "Factorial assignment"));
+					study_features.Add(new StudyFeature(23, "Intervention model", 315, "Factorial assignment"));
 				}
 
 				if (r.study_type == "Observational")
 				{
-					study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 599, "Not applicable"));
+					study_features.Add(new StudyFeature(24, "Masking", 599, "Not applicable"));
 				}
 				else
 				{
@@ -188,7 +194,7 @@ namespace DataDownloader.who
 					 || design.Contains("blinding: open")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 500, "None (Open Label)"));
+						study_features.Add(new StudyFeature(24, "Masking", 500, "None (Open Label)"));
 					}
 					else if (design.Contains("single blind")
 					 || design.Contains("single-blind")
@@ -204,7 +210,7 @@ namespace DataDownloader.who
 					 || design.Contains("uni-blind")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 505, "Single"));
+						study_features.Add(new StudyFeature(24, "Masking", 505, "Single"));
 					}
 					else if (design.Contains("double blind")
 					 || design.Contains("double-blind")
@@ -218,7 +224,7 @@ namespace DataDownloader.who
 					 || design.Contains("participant and investigator blinded")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 510, "Double"));
+						study_features.Add(new StudyFeature(24, "Masking", 510, "Double"));
 					}
 					else if (design.Contains("triple blind")
 					 || design.Contains("triple-blind")
@@ -226,18 +232,18 @@ namespace DataDownloader.who
 					 || design.Contains("masking:participant, investigator, outcome assessor")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 515, "Triple"));
+						study_features.Add(new StudyFeature(24, "Masking", 515, "Triple"));
 					}
 					else if (design.Contains("quadruple blind")
 					 || design.Contains("quadruple-blind")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 520, "Quadruple"));
+						study_features.Add(new StudyFeature(24, "Masking", 520, "Quadruple"));
 					}
 					else if (design.Contains("masking used")
 					 || design.Contains("blinding used"))
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 502, "Blinded (no details)"));
+						study_features.Add(new StudyFeature(24, "Masking", 502, "Blinded (no details)"));
 					}
 					else if (design.Contains("masking:not applicable")
 					 || design.Contains("blinding:not applicable")
@@ -245,18 +251,18 @@ namespace DataDownloader.who
 					 || design.Contains("blinding not applicable")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 599, "Not applicable"));
+						study_features.Add(new StudyFeature(24, "Masking", 599, "Not applicable"));
 					}
 					else if (design.Contains("masking: unknown")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 525, "Not provided"));
+						study_features.Add(new StudyFeature(24, "Masking", 525, "Not provided"));
 					}
 					else if (design.Contains("mask")
 					 || design.Contains("blind")
 					 )
 					{
-						study_features.Add(new StudyFeature(sd_sid, 24, "Masking", 5000, design_list));
+						study_features.Add(new StudyFeature(24, "Masking", 5000, design_list));
 					}
 				}
 			}
@@ -277,7 +283,7 @@ namespace DataDownloader.who
 					 || phase == "phase 0 (exploratory trials)"
 					 || phase == "0 (exploratory trials)")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 105, "Early phase 1"));
+						study_features.Add(new StudyFeature(20, "Phase", 105, "Early phase 1"));
 					}
 					else if (phase == "1"
 						  || phase == "i"
@@ -287,7 +293,7 @@ namespace DataDownloader.who
 						  || phase == "phase i"
 						  || phase == "phase1")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "phase", 110, "Phase 1"));
+						study_features.Add(new StudyFeature(20, "phase", 110, "Phase 1"));
 					}
 					else if (phase == "1-2"
 						  || phase == "1 to 2"
@@ -300,7 +306,7 @@ namespace DataDownloader.who
 						  || phase == "phase i,ii"
 						  || phase == "phase1/phase2")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 115, "Phase 1/Phase 2"));
+						study_features.Add(new StudyFeature(20, "Phase", 115, "Phase 1/Phase 2"));
 					}
 					else if (phase == "2"
 						  || phase == "2a"
@@ -314,7 +320,7 @@ namespace DataDownloader.who
 						  || phase == "phase ii"
 						  || phase == "phase2")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 120, "Phase 2"));
+						study_features.Add(new StudyFeature(20, "Phase", 120, "Phase 2"));
 					}
 					else if (phase == "2-3"
 						 || phase == "ii-iii"
@@ -325,7 +331,7 @@ namespace DataDownloader.who
 						 || phase == "phase2/phase3"
 						 || phase == "phase ii,iii")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 125, "Phase 2/Phase 3"));
+						study_features.Add(new StudyFeature(20, "Phase", 125, "Phase 2/Phase 3"));
 					}
 					else if (phase == "3"
 						  || phase == "iii"
@@ -340,7 +346,7 @@ namespace DataDownloader.who
 						  || phase == "phase3"
 						  || phase == "phase iii")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 130, "Phase 3"));
+						study_features.Add(new StudyFeature(20, "Phase", 130, "Phase 3"));
 					}
 					else if (phase == "4"
 						   || phase == "iv"
@@ -352,11 +358,11 @@ namespace DataDownloader.who
 						   || phase == "phase4"
 						   || phase == "phase iv")
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 135, "Phase 4"));
+						study_features.Add(new StudyFeature(20, "Phase", 135, "Phase 4"));
 					}
 					else
 					{
-						study_features.Add(new StudyFeature(sd_sid, 20, "Phase", 1500, phase_list));
+						study_features.Add(new StudyFeature(20, "Phase", 1500, phase_list));
 					}
 				}
 			}
@@ -476,6 +482,7 @@ namespace DataDownloader.who
 			r.secondary_ids = secondary_ids;
 			r.study_features = study_features;
 
+			/*
 			// just logging for now...
 			if (secondary_ids.Count > 0)
 			{
@@ -500,6 +507,7 @@ namespace DataDownloader.who
 					logging_repo.InsertStudyCondition(c);
 				}
 			}
+			*/
 			return r;
 		}
 
@@ -613,11 +621,11 @@ namespace DataDownloader.who
 							{
 								if (code == "")
 								{
-									conditions.Add(new StudyCondition(sd_sid, s1));
+									conditions.Add(new StudyCondition(s1));
 								}
                                 else
                                 {
-									conditions.Add(new StudyCondition(sd_sid, s1, code, code_system));
+									conditions.Add(new StudyCondition(s1, code, code_system));
 
 								}
 							}
@@ -845,7 +853,7 @@ namespace DataDownloader.who
 				if (Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Success)
 				{
 					processed_id = Regex.Match(sec_id, @"[0-9].[0-9]{3}.[0-9]{3}").Value;
-					sec_id_source = 102001;  // Brasilian etyhics committee approval number
+					sec_id_source = 102001;  // Brasilian ethics committee approval number
 				}
 			}
 
@@ -869,7 +877,7 @@ namespace DataDownloader.who
 			}
 			if (add_id)
 			{
-				Secondary_Id secid = new Secondary_Id(sd_sid, source_field, sec_id, processed_id, sec_id_source);
+				Secondary_Id secid = new Secondary_Id(source_field, sec_id, processed_id, sec_id_source);
 			    existing_ids.Add(secid);
 			}
         }
@@ -899,7 +907,7 @@ namespace DataDownloader.who
 			{
 				source_id = 100117;
 			}
-			else if (tid.StartsWith("ChiCTR"))
+			else if (tid.StartsWith("CHICTR"))
 			{
 				source_id = 100118;
 			}
@@ -950,6 +958,10 @@ namespace DataDownloader.who
 			else if (tid.StartsWith("LBCTR"))
 			{
 				source_id = 101989;
+			}
+            else
+            {
+				source_id = 0;
 			}
 			return source_id;
 		}

@@ -53,7 +53,6 @@ namespace DataDownloader
 
 			}
 
-
 			browser.AllowAutoRedirect = true;
 			browser.AllowMetaRedirect = true;
 			browser.Encoding = Encoding.UTF8;
@@ -197,7 +196,7 @@ namespace DataDownloader
 			{
 				WriteLine("Sorry - For this source, ");
 				WriteLine("(that uses a previously downloaded file as the data source)");
-				WriteLine("You must include a fulklk poath to that file as the 3rd parameter");
+				WriteLine("You must include a full path to that file as the 3rd parameter");
 				return null;
 			}
 

@@ -200,7 +200,6 @@ namespace DataDownloader.who
 	[Table("sf.secondary_ids")]
 	public class Secondary_Id
 	{
-		public string sd_sid{ get; set; }
 		public string source_field { get; set; }
 		public string sec_id { get; set; }
 		public string processed_id { get; set; }
@@ -210,11 +209,9 @@ namespace DataDownloader.who
 			return sec_id_source.HasValue;
 		}
 
-		public Secondary_Id(string _sd_sid, string _source_field, string _sec_id,
+		public Secondary_Id(string _source_field, string _sec_id,
 							string _processed_id, int? _sec_id_source)
         {
-
-			sd_sid = _sd_sid;
 			source_field = _source_field;
 			sec_id = _sec_id;
 			processed_id = _processed_id;
@@ -228,16 +225,14 @@ namespace DataDownloader.who
 	[Table("sf.study_features")]
 	public class StudyFeature
 	{
-		public string sd_sid { get; set; }
 		public int ftype_id { get; set; }
 		public string ftype { get; set; }
 		public int fvalue_id { get; set; }
 		public string fvalue { get; set; }
 
-		public StudyFeature(string _sd_sid, int _ftype_id, string _ftype,
+		public StudyFeature(int _ftype_id, string _ftype,
 			                int _fvalue_id, string _fvalue)
 		{
-			sd_sid = _sd_sid; 
 			ftype_id = _ftype_id;
 			ftype = _ftype;
 			fvalue_id = _fvalue_id;
@@ -251,21 +246,18 @@ namespace DataDownloader.who
 	[Table("sf.study_conditions")]
 	public class StudyCondition
 	{
-		public string sd_sid { get; set; }
 		public string condition { get; set; }
 		public string code { get; set; }
 		public string code_system { get; set; }
 
-		public StudyCondition(string _sd_sid, string _condition)
+		public StudyCondition(string _condition)
 		{ 
-			sd_sid = _sd_sid;
 			condition = _condition;
 		}
 
-		public StudyCondition(string _sd_sid, string _condition,
+		public StudyCondition(string _condition,
 							   string _code, string _code_system)
 		{
-			sd_sid = _sd_sid;
 			condition = _condition;
 			code = _code;
 			code_system = _code_system;

@@ -205,7 +205,7 @@ namespace DataDownloader
 			}
 		}
 
-
+		/*
 		public int InsertSecondaryId(Secondary_Id secid)
 		{
 			using (var conn = new NpgsqlConnection(connString))
@@ -230,6 +230,7 @@ namespace DataDownloader
 				return (int)conn.Insert<StudyCondition>(c);
 			}
 		}
+		*/
 	}
 }
 
