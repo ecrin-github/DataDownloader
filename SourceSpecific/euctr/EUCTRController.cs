@@ -36,7 +36,7 @@ namespace DataDownloader.euctr
 			logging_repo = _logging_repo;
 		}
 
-		public void LoopThroughPages()
+		public DownloadResult LoopThroughPages()
 		{
 			string baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=&page=";
 
@@ -52,7 +52,7 @@ namespace DataDownloader.euctr
 
 
 
-            // 4 individual studies not done during overall update
+			// 4 individual studies not done during overall update
 			/*
 			string baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=";
 			string singleresult_search = baseURL + "2006-005253-30";
@@ -60,6 +60,8 @@ namespace DataDownloader.euctr
 			processor.GetSingleDtudyDetails(browser, homePage, logging_repo,
 										  file_base, 100123, 100014);
 			*/
+
+			return null;
 
 		}
 		

@@ -37,7 +37,7 @@ namespace DataDownloader.biolincc
 		}
 
 
-		public void LoopThroughPages()
+		public DownloadResult LoopThroughPages()
 		{
 			// biolincc start page
 			WebPage homePage = browser.NavigateToPage(new Uri("https://biolincc.nhlbi.nih.gov/studies/"));
@@ -62,13 +62,15 @@ namespace DataDownloader.biolincc
 					string file_name = source.local_file_prefix + st.sd_sid + ".xml";
 					string full_path = Path.Combine(file_base, file_name);
 					file_writer.WriteBioLINCCFile(writer, st, full_path);
-					logging_repo.UpdateDownloadLog(seqnum, source_id, st.sd_sid, st.remote_url, sf_id,
+					logging_repo.UpdateDownloadLog(source_id, st.sd_sid, st.remote_url, sf_id,
 													  st.last_revised_date, full_path);
 
 					// put a pause here if necessary
 					System.Threading.Thread.Sleep(1000);
 				}
 			}
+
+			return null;
 		}
     }
 }

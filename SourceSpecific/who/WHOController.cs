@@ -35,7 +35,7 @@ namespace DataDownloader.who
 			logging_repo = _logging_repo;
 		}
 
-		public void ProcessFile()
+		public DownloadResult ProcessFile()
 		{
 			// WHO processing unusual in that it is from a csv file
 			// The program loops through the file and creates an XML file from each row
@@ -78,9 +78,11 @@ namespace DataDownloader.who
 															   DateHelpers.FetchDateTimeFromISO(r.record_date), full_path);
 
 						}
-					}
+     				}
 				}
 			}
+
+			return null;
 		}
 	}
 }

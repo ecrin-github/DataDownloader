@@ -10,7 +10,7 @@ namespace DataDownloader
 		public int id { get; set; }
 		public int? preference_rating { get; set; }
 		public string database_name { get; set; }
-		public int default_harvest_type_id { get; set; }
+		public bool uses_who_harvest { get; set; }
 		public string local_folder { get; set; }
 		public bool? local_files_grouped { get; set; }
 		public int? grouping_range_by_id { get; set; }
@@ -29,7 +29,38 @@ namespace DataDownloader
 		public bool has_object_dates { get; set; }
 		public bool has_object_pubmed_set { get; set; }
 	}
+
+
+	[Table("sf.search_fetch_types")]
+	public class SFType
+	{
+		public int id { get; set; }
+		public string name { get; set; }
+		public bool requires_date { get; set; }
+		public bool requires_file { get; set; }
+		public bool requires_search_id { get; set; }
+		public bool requires_prev_sf_ids { get; set; }
+		public string description { get; set; }
+		public string list_order { get; set; }
+	}
+		
+
+	[Table("sf.search_fetches")]
+	public class SearchFetchRecord
+	{
+		public int id { get; set; }
+		public int source_id { get; set; }
+		public int type_id { get; set; }
+		public DateTime? time_started { get; set; }
+		public DateTime? time_ended { get; set; }
+		public int? num_records_checked { get; set; }
+		public int? num_records_added { get; set; }
+		public int? num_records_downloaded { get; set; }
+		public int? focused_search_id { get; set; }
+		public string comments { get; set; }
+	}
 	
+
 	[Table("sf.source_data_studies")]
 	public class StudyFileRecord
 	{
@@ -130,6 +161,20 @@ namespace DataDownloader
 		public ObjectFileRecord()
 		{ }
 
+	}
+
+	public class DownloadResult
+	{
+		public int num_checked { get; set; }
+		public int num_added { get; set; }
+		public int num_downloaded { get; set; }
+
+		public DownloadResult()
+        {
+			num_checked = 0;
+			num_added = 0;
+			num_downloaded = 0;
+		}
 	}
 
 

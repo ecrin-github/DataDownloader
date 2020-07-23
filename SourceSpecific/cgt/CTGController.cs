@@ -11,12 +11,12 @@ using ScrapySharp.Html;
 using System.IO;
 
 
-namespace DataDownloader.isrctn
+namespace DataDownloader.ctg
 {
-	class ISRCTN_Controller
+	class CTG_Controller
 	{
     	ScrapingBrowser browser;
-		ISRCTN_Processor processor;
+		CTG_Processor processor;
 		Source source;
 		string file_base;
 		FileWriter file_writer;
@@ -24,10 +24,10 @@ namespace DataDownloader.isrctn
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public ISRCTN_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public CTG_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
-			processor = new ISRCTN_Processor();
+			processor = new CTG_Processor();
 			source = _source;
 			file_base = source.local_folder;
 			source_id = source.id;

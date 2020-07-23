@@ -1,208 +1,179 @@
-﻿using ScrapySharp.Network;
-using System;
-using System.Text;
+﻿using System;
+using CommandLine;
 using static System.Console;
-using DataDownloader.yoda;
-using DataDownloader.biolincc;
-using DataDownloader.euctr;
-using DataDownloader.isrctn;
-using DataDownloader.who;
-using DataDownloader.vivli;
-using DataDownloader.pubmed;
-using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
 
 namespace DataDownloader
 {
 	class Program
 	{
-		static ScrapingBrowser browser = new ScrapingBrowser();
-
-		static async Task Main(string[] args)
+		static void Main(string[] args)
 		{
-			// Identify source type and location, destination folder
+			var result = Parser.Default.ParseArguments<Options>(args)
+			.WithParsed(RunOptions)
+			.WithNotParsed(HandleParseError);
+		}
 
-			if (NoArgsProvided(args)) return;
-			int source_id = GetFirstArg(args[0]);
-			if (source_id == 0) return;
+		static void RunOptions(Options opts)
+		{
+			// Handle options.
 
-			LoggingDataLayer logging_repo = new LoggingDataLayer();
-			Source source = logging_repo.FetchSourceParameters(source_id);
+			Args args = new Args();
+            LoggingDataLayer logging_repo = new LoggingDataLayer();
+
+			// Check source id is valid. 
+			
+			Source source = logging_repo.FetchSourceParameters(opts.source_id);
 			if (source == null)
 			{
 				WriteLine("Sorry - the first argument does not correspond to a known source");
 				return;
 			}
+			args.source_id = source.id;
 
-			int sf_id = logging_repo.GetNextSearchFetchId();
 
-			int harvest_type_id = GetHarvestType(args, source);
-			DateTime? harvest_cutoff_revision_date = harvest_type_id == 2 ? GetHarvestCutOffDate(args) : null;
-			if (harvest_type_id == 2 && harvest_cutoff_revision_date == null)
+			// Check source fetch type id is valid. 
+
+			SFType sf_type = logging_repo.FetchTypeParameters(opts.search_fetch_type_id);
+			if (sf_type == null)
 			{
-				WriteLine("Sorry - there must be a valid cutoff date for a harvest of type 2");
+				WriteLine("Sorry - the type argument does not correspond to a known search / fetch type");
 				return;
 			}
+			args.type_id = sf_type.id;
 
-			string source_file = "";
-			if (source_id == 100115)   // needs changing to a source property by adding to table
+
+			// If a date is required check one is present and is valid. 
+			// It should be in the ISO YYYY-MM-DD format.
+
+			if (sf_type.requires_date)
             {
-				// will be type 1 harvest (all of content) but will 
-				// require a path to the file
-				source_file = GetSourceFile(args);
-
-			}
-
-			browser.AllowAutoRedirect = true;
-			browser.AllowMetaRedirect = true;
-			browser.Encoding = Encoding.UTF8;
-
-			switch (source.id)
-			{
-				case 101900:
-					{
-						BioLINCC_Controller biolincc_controller = new BioLINCC_Controller(browser, sf_id, source, logging_repo);
-						biolincc_controller.LoopThroughPages();
-						break;
-					}
-				case 101901:
-					{
-						Yoda_Controller yoda_controller = new Yoda_Controller(browser, sf_id, source, logging_repo);
-						yoda_controller.LoopThroughPages();
-						break;
-					}
-				case 100120:
-					{
-						break;
-					}
-				case 100123:
-					{
-						ISRCTN_Controller biolincc_controller = new ISRCTN_Controller(browser, sf_id, source, logging_repo);
-						biolincc_controller.LoopThroughPages(); 
-						break;
-					}
-				case 100126:
-					{
-						EUCTR_Controller biolincc_controller = new EUCTR_Controller(browser, sf_id, source, logging_repo);
-						biolincc_controller.LoopThroughPages(); 
-						break;
-					}
-				case 100115:
-					{
-						WHO_Controller who_controller = new WHO_Controller(source_file, sf_id, source, logging_repo);
-						who_controller.ProcessFile();
-						break;
-					}
-				case 100135:
-					{
-						break;
-					}
-				case 101940:
-					{
-						// vivli
-						// second parameter to be added here to control exact functions used
-						// and table creation etc.
-						Vivli_Controller vivli_controller = new Vivli_Controller(browser, sf_id, source, logging_repo);
-						vivli_controller.FetchURLDetails();
-						vivli_controller.LoopThroughPages();
-						break;
-					}
-			}
-
-			// tidy up and ensure logging up to date
-			// logging_repo.CreateSFLoggingRecord();
-		}
-
-
-		private static bool NoArgsProvided(string[] args)
-		{
-			if (args.Length == 0)
-			{
-				// may need a cut off point....
-				WriteLine("Sorry - two parameters are necessary");
-				WriteLine("The first is a 6 digit number to indicate the source.");
-				WriteLine("The second an integer to indicate the last search-fetch id");
-				return true;
-			}
-			else
-			{
-				return false;
-			}
-		}
-
-		private static int GetFirstArg(string arg)
-		{
-			int arg_id = 0;
-			if (!Int32.TryParse(arg, out arg_id))
-			{
-				WriteLine("Sorry - the first argument must be an integer");
-			}
-			return arg_id;
-		}
-
-
-		private static int GetHarvestType(string[] args, Source source_parameters)
-		{
-			if (args.Length > 1)
-			{
-				int harvest_type_arg = 0;
-				if (!Int32.TryParse(args[1], out harvest_type_arg))
+				string cutoff_date = opts.cutoff_date.Trim();
+				if (!string.IsNullOrEmpty(cutoff_date))
 				{
-					WriteLine("The second argument, if present, must be an integer (default settinmg will be used)");
-					harvest_type_arg = source_parameters.default_harvest_type_id;
+					if (Regex.Match(cutoff_date, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
+					{
+						args.cutoff_date = new DateTime(
+									Int32.Parse(cutoff_date.Substring(0, 4)),
+									Int32.Parse(cutoff_date.Substring(5, 2)),
+									Int32.Parse(cutoff_date.Substring(8, 2)));
+					}
+				
 				}
-				if (harvest_type_arg != 1 && harvest_type_arg != 2 && harvest_type_arg != 3)
+				
+				if (args.cutoff_date == null)
+                {
+     				WriteLine("Sorry - this search fetch type requires a date"); ;
+					WriteLine("in the format YYYY-MM-DD and this is missing");
+					return;
+				}
+			}
+
+
+			if (sf_type.requires_file)
+			{
+				if (!string.IsNullOrEmpty(opts.file_name.Trim()))
 				{
-					WriteLine("Sorry - the second argument, if present, must be 1, 2, or 3 (default settinmg will be used)");
-					harvest_type_arg = source_parameters.default_harvest_type_id;
+					string filename = opts.file_name.Trim();
+					if (File.Exists(filename))
+					{
+						args.file_name = filename;
+					}
 				}
-				return harvest_type_arg;
+
+				if (string.IsNullOrEmpty(args.file_name))
+				{
+					WriteLine("Sorry - this search fetch type requires a file name"); ;
+					WriteLine("and no valid file path and name is supplied");
+					return;
+				}
 			}
-			else
+
+
+			if (sf_type.requires_search_id)
 			{
-				// use the default harvesting method
-				return source_parameters.default_harvest_type_id;
+				args.focused_search_id = opts.focused_search_id;
+
+				if (args.focused_search_id == 0 || args.focused_search_id == null)
+				{
+					WriteLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
+					WriteLine("and no valid file path and name is supplied");
+					return;
+				}
 			}
+
+
+
+			if (sf_type.requires_prev_sf_ids)
+			{
+				args.previous_searches = opts.previous_searches;
+
+				if (args.previous_searches.Count() == 0)
+				{
+					WriteLine("Sorry - this search fetch type requires one or more"); ;
+					WriteLine("previous search-fetch ids and none were supplied supplied");
+					return;
+				}
+			}
+
+			// Simply pass the 'No logging' boolean switch across
+
+			args.no_logging = opts.no_logging;
+
+			Downloader dl = new Downloader();
+			dl.RunDownloader(args, source);
 		}
 
-
-		private static DateTime? GetHarvestCutOffDate(string[] args)
+		static void HandleParseError(IEnumerable<Error> errs)
 		{
-			if (args.Length < 3)
-			{
-				WriteLine("Sorry - if the second argument is 2, ");
-				WriteLine("(harvest only files revised after a set date)");
-				WriteLine("You must include a third date parameter in the format YYYY-MM-DD");
-				return null;
-			}
-
-			if (!Regex.Match(args[2], @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
-			{
-				WriteLine("Sorry - if the second argument is 2, "); ;
-				WriteLine("(harvest only files revised after a set date)");
-				WriteLine("The third parameter must be in in the format YYYY-MM-DD");
-				return null;
-			}
-
-			return new DateTime(Int32.Parse(args[2].Substring(0, 4)),
-								Int32.Parse(args[2].Substring(5, 2)),
-								Int32.Parse(args[2].Substring(8, 2)));
+			// handle errors
 		}
-
-
-		private static string GetSourceFile(string[] args)
-		{
-			if (args.Length < 3)
-			{
-				WriteLine("Sorry - For this source, ");
-				WriteLine("(that uses a previously downloaded file as the data source)");
-				WriteLine("You must include a full path to that file as the 3rd parameter");
-				return null;
-			}
-
-			return args[2];
-		}
+		
 	}
+
+
+	public class Options
+	{
+		// Lists the command line arguments and options
+
+		[Option('s', "source", Required = true, HelpText = "Integer id of data source.")]
+		public int source_id { get; set; }
+
+		[Option('t', "sf_type_id", Required = true, HelpText = "Integer id representing tpe of search / fetch.")]
+		public int search_fetch_type_id { get; set; }
+
+		[Option('f', "file_name", Required = false, HelpText = "Filename of csv file with data.")]
+		public string file_name { get; set; }
+
+		[Option('d', "cutoff_date", Required = false, HelpText = "Only data revised or added since this date will be considered")]
+		public string cutoff_date { get; set; }
+
+		[Option('q', "focused_search_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
+		public int focused_search_id { get; set; }
+
+		[Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
+		public IEnumerable<int> previous_searches { get; set; }
+
+		[Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.search_fetches")]
+		public bool no_logging { get; set; }
+
+	}
+
+
+	public class Args
+	{
+		public int source_id { get; set; }
+		public int type_id { get; set; }
+		public string file_name { get; set; }
+		public DateTime? cutoff_date { get; set; }
+		public int? focused_search_id { get; set; }
+		public IEnumerable<int> previous_searches { get; set; }
+		public bool no_logging { get; set; }
+	}
+
 }
 
 

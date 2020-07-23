@@ -6,13 +6,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.8.0" />
     <PackageReference Include="CsvHelper" Version="15.0.5" />
     <PackageReference Include="Dapper" Version="2.0.35" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.35" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.3" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.6" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="Npgsql" Version="4.1.3.1" />
+    <PackageReference Include="Npgsql" Version="4.1.4" />
     <PackageReference Include="PostgreSQLCopyHelper" Version="2.6.3" />
     <PackageReference Include="ScrapySharp" Version="3.0.0" />
   </ItemGroup>
@@ -24,7 +25,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="SourceSpecific\cgt\" />
     <Folder Include="SourceSpecific\pubmed\" />
   </ItemGroup>
 

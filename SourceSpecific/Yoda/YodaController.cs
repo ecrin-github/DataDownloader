@@ -35,7 +35,7 @@ namespace DataDownloader.yoda
 			logging_repo = _logging_repo;
 		}
 
-		public void LoopThroughPages()
+		public DownloadResult LoopThroughPages()
 		{
 			// set up initial study list
 			List<Summary> all_study_list = new List<Summary>();
@@ -52,12 +52,13 @@ namespace DataDownloader.yoda
 			}
 
 			// then consider each study in turn
+			DownloadResult res = new DownloadResult();
 			XmlSerializer writer = new XmlSerializer(typeof(Yoda_Record));
-			int seqnum = 0;
+
 			foreach (Summary sm in all_study_list)
 			{
 				// get the details page...
-				seqnum++;
+				res.num_checked++;
 				WebPage studyPage = browser.NavigateToPage(new Uri(sm.details_link));
 
 				// send the page off for processing
@@ -70,13 +71,20 @@ namespace DataDownloader.yoda
 					string file_name = source.local_file_prefix + st.sd_sid + ".xml";
 					string full_path = Path.Combine(file_base, file_name);
 					file_writer.WriteYodaFile(writer, st, full_path);
-					logging_repo.UpdateDownloadLog(seqnum, source_id, st.sd_sid, st.remote_url, sf_id,
+					bool added = logging_repo.UpdateDownloadLog(source_id, st.sd_sid, st.remote_url, sf_id,
 													  st.last_revised_date, full_path);
+					res.num_downloaded++;
+					if (added) res.num_added++;
 
 					// put a pause here if necessary
 					System.Threading.Thread.Sleep(500);
 				}
+
+				Console.WriteLine(res.num_checked.ToString());
+
 			}
+
+			return res;
 		}
 	}
 

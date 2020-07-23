@@ -155,7 +155,7 @@ namespace DataDownloader.who
 		public string scientific_contact_affiliation { get; set; }
 		public string study_type { get; set; }
 		public string date_registration { get; set; }
-		public string date_enrollement { get; set; }
+		public string date_enrolment { get; set; }
 		public string target_size { get; set; }
 		public string study_status { get; set; }
 		public string primary_sponsor { get; set; }

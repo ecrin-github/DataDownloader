@@ -132,7 +132,7 @@ namespace DataDownloader.who
 			}
 
 			r.date_registration = DateHelpers.iso_date(sr.Date_registration);
-			r.date_enrollement = DateHelpers.iso_date(sr.Date_enrollement);
+			r.date_enrolment = DateHelpers.iso_date(sr.Date_enrollement);
 
 			r.target_size = WHOHelpers.tidy_string(sr.Target_size);
 			r.primary_sponsor = WHOHelpers.tidy_string(sr.Primary_sponsor);
@@ -405,9 +405,10 @@ namespace DataDownloader.who
                 {
 					bool M, F = false;
 					string gender_string = "";
-					F = gen.Contains("female") || gen.Contains("women");
+					F = gen.Contains("female") || gen.Contains("women") || gen == "f";
 					string gen2 = F ? gen.Replace("female", "").Replace("women", "") : gen;
-					M = gen2.Contains("male") || gen.Contains("men");
+					M = gen2.Contains("male") || gen.Contains("men") || gen == "m" ;
+					
 					if (M && F)
                     {
 						gender_string = "Both";
@@ -417,9 +418,16 @@ namespace DataDownloader.who
 						if (M) gender_string = "Male";
 						if (F) gender_string = "Female";
 					}
+
+					if (gender == "-")
+					{
+						gender_string = "Not provided";
+					}
+
 					if (gender_string == "")
-                    {
-						gender_string = "?? Unavle to classify (" + gender + ")";
+    				{
+						// still no match...
+						gender_string = "?? Unable to classify (" + gender + ")";
 					}
 					r.gender = gender_string;
 				}
@@ -482,32 +490,6 @@ namespace DataDownloader.who
 			r.secondary_ids = secondary_ids;
 			r.study_features = study_features;
 
-			/*
-			// just logging for now...
-			if (secondary_ids.Count > 0)
-			{
-				foreach (Secondary_Id s in secondary_ids)
-				{
-					logging_repo.InsertSecondaryId(s);
-				}
-			}
-
-			if (study_features.Count > 0)
-			{
-				foreach (StudyFeature f in study_features)
-				{
-					logging_repo.InsertStudyFeature(f);
-				}
-			}
-
-			if (r.condition_list.Count > 0)
-			{
-				foreach (StudyCondition c in r.condition_list)
-				{
-					logging_repo.InsertStudyCondition(c);
-				}
-			}
-			*/
 			return r;
 		}
 
