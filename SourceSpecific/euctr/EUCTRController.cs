@@ -24,7 +24,7 @@ namespace DataDownloader.euctr
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public EUCTR_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public EUCTR_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			processor = new EUCTR_Processor();
@@ -52,14 +52,6 @@ namespace DataDownloader.euctr
 
 
 
-			// 4 individual studies not done during overall update
-			/*
-			string baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=";
-			string singleresult_search = baseURL + "2006-005253-30";
-			WebPage homePage = browser.NavigateToPage(new Uri(singleresult_search));
-			processor.GetSingleDtudyDetails(browser, homePage, logging_repo,
-										  file_base, 100123, 100014);
-			*/
 
 			return null;
 

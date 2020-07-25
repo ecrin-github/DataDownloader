@@ -2,7 +2,7 @@
   "profiles": {
     "DataDownloader": {
       "commandName": "Project",
-      "commandLineArgs": "100115 1 \"C:\\Data sources\\WHO\\file_13.csv\""
+      "commandLineArgs": "-s 100115 -t 113 -f \"C:\\Data sources\\WHO\\20200629 ICTRP.csv\""
     }
   }
 }

@@ -23,7 +23,7 @@ namespace DataDownloader.who
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public WHO_Controller(string _sourcefile, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public WHO_Controller(string _sourcefile, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			sourcefile = _sourcefile;
 			processor = new WHO_Processor();
@@ -41,26 +41,32 @@ namespace DataDownloader.who
 			// The program loops through the file and creates an XML file from each row
 			// It then distributes it to the correct source folder for 
 			// later harvesting.
+
 			// In some cases the file will be one of a set created from a large
 			// 'all data' download, in other cases it will be a weekly update file
 			// In both cases any existing XML files of the same name 
 			// shoud be overwritten
 
+			// Although the args parameter is passed in for consistency it is not used.
+			// The file may be a 'full' set, or more commonly a weekly update file, but this
+			// does not affect the file's processing.
+
+			XmlSerializer writer = new XmlSerializer(typeof(WHORecord));
+			DownloadResult res = new DownloadResult();
+
 			using (var reader = new StreamReader(sourcefile, true))
 			{
-				XmlSerializer writer = new XmlSerializer(typeof(WHORecord)); 
 				using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
 				{
 					csv.Configuration.HasHeaderRecord = false;
 					var records = csv.GetRecords<WHO_SourceRecord>();
-					int n = 0;
+
+					// Consider each study in turn.
 
 					foreach (WHO_SourceRecord sr in records)
 					{
+						res.num_checked++;
 						WHORecord r = processor.ProcessStudyDetails(sr, logging_repo);
-
-						n++;
-						Console.WriteLine(n);
 
 						if (r != null)
                         {
@@ -74,15 +80,20 @@ namespace DataDownloader.who
 							string full_path = Path.Combine(file_base, file_name);
 
 							file_writer.WriteWHOSourcedFile(writer, r, full_path);
-							logging_repo.UpdateDownloadLog(r.source_id, r.sd_sid, r.remote_url, sf_id,
+							bool added = logging_repo.UpdateDownloadLog(r.source_id, r.sd_sid, r.remote_url, sf_id,
 															   DateHelpers.FetchDateTimeFromISO(r.record_date), full_path);
+							res.num_downloaded++;
+							if (added) res.num_added++;
 
+							Console.WriteLine(r.sd_sid);
 						}
-     				}
+
+						Console.WriteLine(res.num_checked.ToString());
+					}
 				}
 			}
 
-			return null;
+			return res;
 		}
 	}
 }

@@ -24,7 +24,7 @@ namespace DataDownloader.pubmed
 		int sf_id;
 		int source_id;
 
-		public PubMed_Controller(int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public PubMed_Controller(int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			webClient = new HttpClient();
 			logging_repo = _logging_repo;

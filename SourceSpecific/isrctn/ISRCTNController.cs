@@ -24,7 +24,7 @@ namespace DataDownloader.isrctn
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public ISRCTN_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public ISRCTN_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			processor = new ISRCTN_Processor();

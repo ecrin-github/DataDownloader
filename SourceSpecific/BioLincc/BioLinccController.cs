@@ -23,7 +23,7 @@ namespace DataDownloader.biolincc
 		LoggingDataLayer logging_repo;
 
 
-		public BioLINCC_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public BioLINCC_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			biolincc_repo = new BioLinccDataLayer();
@@ -39,38 +39,49 @@ namespace DataDownloader.biolincc
 
 		public DownloadResult LoopThroughPages()
 		{
-			// biolincc start page
-			WebPage homePage = browser.NavigateToPage(new Uri("https://biolincc.nhlbi.nih.gov/studies/"));
+			// Although the args parameter is passed in for consistency it is not used.
+			// For BioLincc, all data is downloaded each time during a download, as it takes a relatively short time
+			// and the files simply replaced or - if new - added to the folder. There is therrefore not a concept of an
+			// update or focused download, as opposed to a full download.
+			
+			// Get list of studies from the Biolincc start page.
 
-			int seqnum = 1000;  // arbitrary start value
+			WebPage homePage = browser.NavigateToPage(new Uri("https://biolincc.nhlbi.nih.gov/studies/"));
 			var study_list_table = homePage.Find("div", By.Class("table-responsive"));
 			HtmlNode[] studyRows = study_list_table.CssSelect("tbody tr").ToArray();
+
 			XmlSerializer writer = new XmlSerializer(typeof(BioLinccRecord));
+			DownloadResult res = new DownloadResult();
+
+			// Consider each study in turn.
 
 			foreach (HtmlNode row in studyRows)
 			{
-				seqnum++;
-				// if (study_id < 1048) continue;  // continuing after a break	
-				// if (study_id > 1010) break;     // testing
-
 				// fetch the constructed study record
-				BioLinccRecord st = processor.GetStudyDetails(browser, biolincc_repo, seqnum, row);
+				res.num_checked++;
+				BioLinccRecord st = processor.GetStudyDetails(browser, biolincc_repo, res.num_checked, row);
 
 				if (st != null)
 				{
-					// Write out study record as XML
+					// Write out study record as XML.
+
 					string file_name = source.local_file_prefix + st.sd_sid + ".xml";
 					string full_path = Path.Combine(file_base, file_name);
 					file_writer.WriteBioLINCCFile(writer, st, full_path);
-					logging_repo.UpdateDownloadLog(source_id, st.sd_sid, st.remote_url, sf_id,
+					bool added = logging_repo.UpdateDownloadLog(source_id, st.sd_sid, st.remote_url, sf_id,
 													  st.last_revised_date, full_path);
+					res.num_downloaded++;
+					if (added) res.num_added++;
 
-					// put a pause here if necessary
+					// Put a pause here if necessary.
+
 					System.Threading.Thread.Sleep(1000);
 				}
+
+				Console.WriteLine(res.num_checked.ToString());
 			}
 
-			return null;
+			return res;
 		}
     }
 }

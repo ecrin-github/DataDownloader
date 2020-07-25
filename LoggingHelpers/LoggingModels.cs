@@ -48,6 +48,7 @@ namespace DataDownloader
 	[Table("sf.search_fetches")]
 	public class SearchFetchRecord
 	{
+		[ExplicitKey]
 		public int id { get; set; }
 		public int source_id { get; set; }
 		public int type_id { get; set; }
@@ -64,9 +65,7 @@ namespace DataDownloader
 	[Table("sf.source_data_studies")]
 	public class StudyFileRecord
 	{
-		[Key]
 		public int id { get; set; }
-
 		public int source_id { get; set; }
 		public string sd_id { get; set; }
 		public string remote_url { get; set; }
@@ -116,9 +115,7 @@ namespace DataDownloader
 	[Table("sf.source_data_objects")]
 	public class ObjectFileRecord
 	{
-		[Key]
 		public int id { get; set; }
-
 		public int source_id { get; set; }
 		public string sd_id { get; set; }
 		public string remote_url { get; set; }

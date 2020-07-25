@@ -25,7 +25,7 @@ namespace DataDownloader.vivli
 		LoggingDataLayer logging_repo;
 
 
-		public Vivli_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public Vivli_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			vivli_repo = new VivliDataLayer();

@@ -51,7 +51,7 @@ namespace DataDownloader
 
 			if (sf_type.requires_date)
             {
-				string cutoff_date = opts.cutoff_date.Trim();
+				string cutoff_date = opts.cutoff_date;
 				if (!string.IsNullOrEmpty(cutoff_date))
 				{
 					if (Regex.Match(cutoff_date, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
@@ -72,19 +72,13 @@ namespace DataDownloader
 				}
 			}
 
+			// If a file is required check a name is supplied and that it
+			// corresponds to a file.
 
+			args.file_name = opts.file_name;
 			if (sf_type.requires_file)
 			{
-				if (!string.IsNullOrEmpty(opts.file_name.Trim()))
-				{
-					string filename = opts.file_name.Trim();
-					if (File.Exists(filename))
-					{
-						args.file_name = filename;
-					}
-				}
-
-				if (string.IsNullOrEmpty(args.file_name))
+				if (string.IsNullOrEmpty(args.file_name) || !File.Exists(args.file_name))
 				{
 					WriteLine("Sorry - this search fetch type requires a file name"); ;
 					WriteLine("and no valid file path and name is supplied");
@@ -92,11 +86,9 @@ namespace DataDownloader
 				}
 			}
 
-
+			args.focused_search_id = opts.focused_search_id;
 			if (sf_type.requires_search_id)
 			{
-				args.focused_search_id = opts.focused_search_id;
-
 				if (args.focused_search_id == 0 || args.focused_search_id == null)
 				{
 					WriteLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
@@ -106,11 +98,9 @@ namespace DataDownloader
 			}
 
 
-
+			args.previous_searches = opts.previous_searches;
 			if (sf_type.requires_prev_sf_ids)
 			{
-				args.previous_searches = opts.previous_searches;
-
 				if (args.previous_searches.Count() == 0)
 				{
 					WriteLine("Sorry - this search fetch type requires one or more"); ;

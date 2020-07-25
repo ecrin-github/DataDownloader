@@ -30,6 +30,7 @@ namespace DataDownloader
 
 		public void RunDownloader(Args args, Source source)
 		{
+
 			// Identify source type and location, destination folder
 
 			Console.WriteLine("source_id is " + args.source_id.ToString());
@@ -45,6 +46,7 @@ namespace DataDownloader
 			}
 			Console.WriteLine("no_Logging is " + args.no_logging);
 
+
 			LoggingDataLayer logging_repo = new LoggingDataLayer();
 			int sf_id = logging_repo.GetNextSearchFetchId();
     		string source_file = args.file_name;
@@ -52,9 +54,10 @@ namespace DataDownloader
 			// Set up search-fetch record
 
 			SearchFetchRecord sfr = new SearchFetchRecord();
+			sfr.id = sf_id;
 			sfr.source_id = source.id;
-			sfr.type_id = 0; // need a way of working this out....or including it in the parameters
-			sfr.focused_search_id = 0; // need a way of working this out....or including it in the parameters
+			sfr.type_id = args.type_id; 
+			sfr.focused_search_id = args.focused_search_id; 
 			sfr.time_started = DateTime.Now;
 
 			DownloadResult res = new DownloadResult();
@@ -63,37 +66,37 @@ namespace DataDownloader
 			{
 				case 101900:
 					{
-						BioLINCC_Controller biolincc_controller = new BioLINCC_Controller(browser, sf_id, source, logging_repo);
+						BioLINCC_Controller biolincc_controller = new BioLINCC_Controller(browser, sf_id, source, args, logging_repo);
 						res = biolincc_controller.LoopThroughPages();
 						break;
 					}
 				case 101901:
 					{
-						Yoda_Controller yoda_controller = new Yoda_Controller(browser, sf_id, source, logging_repo);
+						Yoda_Controller yoda_controller = new Yoda_Controller(browser, sf_id, source, args, logging_repo);
 						res = yoda_controller.LoopThroughPages();
 						break;
 					}
 				case 100120:
 					{
-						CTG_Controller ctg_controller = new CTG_Controller(browser, sf_id, source, logging_repo);
+						CTG_Controller ctg_controller = new CTG_Controller(browser, sf_id, source, args, logging_repo);
 						res = ctg_controller.LoopThroughPages();
 						break;
 					}
 				case 100123:
 					{
-						ISRCTN_Controller isrctn_controller = new ISRCTN_Controller(browser, sf_id, source, logging_repo);
+						ISRCTN_Controller isrctn_controller = new ISRCTN_Controller(browser, sf_id, source, args, logging_repo);
 						res = isrctn_controller.LoopThroughPages(); 
 						break;
 					}
 				case 100126:
 					{
-						EUCTR_Controller euctr_controller = new EUCTR_Controller(browser, sf_id, source, logging_repo);
+						EUCTR_Controller euctr_controller = new EUCTR_Controller(browser, sf_id, source, args, logging_repo);
 						res = euctr_controller.LoopThroughPages(); 
 						break;
 					}
 				case 100115:
 					{
-						WHO_Controller who_controller = new WHO_Controller(source_file, sf_id, source, logging_repo);
+						WHO_Controller who_controller = new WHO_Controller(source_file, sf_id, source, args, logging_repo);
 						res = who_controller.ProcessFile();
 						break;
 					}
@@ -106,7 +109,7 @@ namespace DataDownloader
 						// vivli
 						// second parameter to be added here to control exact functions used
 						// and table creation etc.
-						Vivli_Controller vivli_controller = new Vivli_Controller(browser, sf_id, source, logging_repo);
+						Vivli_Controller vivli_controller = new Vivli_Controller(browser, sf_id, source, args, logging_repo);
 						vivli_controller.FetchURLDetails();
 						vivli_controller.LoopThroughPages();
 						break;

@@ -22,7 +22,7 @@ namespace DataDownloader.yoda
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public Yoda_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, LoggingDataLayer _logging_repo)
+		public Yoda_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			yoda_repo = new YodaDataLayer();
@@ -37,7 +37,13 @@ namespace DataDownloader.yoda
 
 		public DownloadResult LoopThroughPages()
 		{
-			// set up initial study list
+			// Although the args parameter is passed in for consistency it is not used.
+			// For Yoda, all data is downloaded each time during a download, as it takes a relatively short time
+			// and the files simply replaced or - if new - added to the folder. There is therrefore not a concept of an
+			// update or focused download, as opposed to a full download.
+
+			// set up initial study list.
+
 			List<Summary> all_study_list = new List<Summary>();
 			string baseURL = "https://yoda.yale.edu/trials-search?amp%3Bpage=0&field_clintrials_gov_nct_number_title=&page=";
 			//for (int i = 0; i < 4; i++)
@@ -51,23 +57,27 @@ namespace DataDownloader.yoda
 				System.Threading.Thread.Sleep(300);
 			}
 
-			// then consider each study in turn
 			DownloadResult res = new DownloadResult();
 			XmlSerializer writer = new XmlSerializer(typeof(Yoda_Record));
 
+			// Consider each study in turn.
+
 			foreach (Summary sm in all_study_list)
 			{
-				// get the details page...
-				res.num_checked++;
+				// Get the details page...
+				
 				WebPage studyPage = browser.NavigateToPage(new Uri(sm.details_link));
+                res.num_checked++;
 
-				// send the page off for processing
+				// Send the page off for processing
+
 				HtmlNode page = studyPage.Find("div", By.Class("region-content")).FirstOrDefault();
 				Yoda_Record st = processor.GetStudyDetails(browser, yoda_repo, page, sm);
 
 				if (st != null)
 				{
-					// Write out study record as XML
+					// Write out study record as XML.
+
 					string file_name = source.local_file_prefix + st.sd_sid + ".xml";
 					string full_path = Path.Combine(file_base, file_name);
 					file_writer.WriteYodaFile(writer, st, full_path);
@@ -76,7 +86,8 @@ namespace DataDownloader.yoda
 					res.num_downloaded++;
 					if (added) res.num_added++;
 
-					// put a pause here if necessary
+					// Put a pause here if necessary.
+
 					System.Threading.Thread.Sleep(500);
 				}
 
@@ -87,5 +98,4 @@ namespace DataDownloader.yoda
 			return res;
 		}
 	}
-
 }
