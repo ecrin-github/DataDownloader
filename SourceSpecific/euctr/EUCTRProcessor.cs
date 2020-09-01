@@ -17,7 +17,7 @@ namespace DataDownloader.euctr
     public class EUCTR_Processor
     {
        public void GetStudyInitialDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo, 
-                                           int pagenum, string file_base, int source_id, int last_sf_id)
+                                           int pagenum, string file_base, int source_id, int last_saf_id, bool incomplete_only)
         {
             int n = (pagenum - 1) * 20;
             var pageContent = homePage.Find("div", By.Class("results"));
@@ -36,8 +36,12 @@ namespace DataDownloader.euctr
                 // Now the euctr_id (sd_id) is known get file record - check OK to proceed...
 
                 StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(euctr_id, source_id);
-                if (file_record?.last_sf_id == last_sf_id) continue;  // already been done
+                if (file_record?.last_saf_id == last_saf_id) continue;  // already been done - used when skipping after errors...
 
+                // If 'incomplete_only' has been signalled ignore 'assumed complete' files.
+
+                if (incomplete_only && file_record.assume_complete == true) continue; 
+                
                 // Instantiate record.
 
                 string sponsor_id = InnerValue(idDetails[1]);
@@ -82,17 +86,17 @@ namespace DataDownloader.euctr
                 {
                     // new record
                     bool? assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
-                    file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, last_sf_id, assume_complete, full_path);
+                    file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, last_saf_id, assume_complete, full_path);
                     logging_repo.InsertStudyFileRec(file_record);
                 }
                 else
                 {
                     // update record
                     file_record.remote_url = st.details_url;
-                    file_record.last_sf_id = last_sf_id;
+                    file_record.last_saf_id = last_saf_id;
                     file_record.assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
                     file_record.download_status = 2;
-                    file_record.download_datetime = DateTime.Now;
+                    file_record.last_downloaded = DateTime.Now;
                     file_record.local_path = full_path;
                     logging_repo.StoreStudyFileRec(file_record);
                 }
@@ -104,7 +108,7 @@ namespace DataDownloader.euctr
 
 
         public void GetSingleStudyDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo,
-                                          string file_base, int source_id, int last_sf_id)
+                                          string file_base, int source_id, int last_saf_id)
         {
             // This used when examining only a single study
 
@@ -123,7 +127,7 @@ namespace DataDownloader.euctr
                 // Now the euctr_id (sd_id) is known get file record - check OK to proceed...
 
                 StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(euctr_id, source_id);
-                if (file_record?.last_sf_id == last_sf_id) continue;  // already been done
+                if (file_record?.last_saf_id == last_saf_id) continue;  // already been done
 
                 // Instantiate record.
 
@@ -168,17 +172,17 @@ namespace DataDownloader.euctr
                 {
                     // new record
                     bool? assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
-                    file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, last_sf_id, assume_complete, full_path);
+                    file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, last_saf_id, assume_complete, full_path);
                     logging_repo.InsertStudyFileRec(file_record);
                 }
                 else
                 {
                     // update record
                     file_record.remote_url = st.details_url;
-                    file_record.last_sf_id = last_sf_id;
+                    file_record.last_saf_id = last_saf_id;
                     file_record.assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
                     file_record.download_status = 2;
-                    file_record.download_datetime = DateTime.Now;
+                    file_record.last_downloaded = DateTime.Now;
                     file_record.local_path = full_path;
                     logging_repo.StoreStudyFileRec(file_record);
                 }

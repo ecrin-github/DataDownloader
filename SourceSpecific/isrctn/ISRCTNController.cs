@@ -20,18 +20,18 @@ namespace DataDownloader.isrctn
 		Source source;
 		string file_base;
 		FileWriter file_writer;
-		int sf_id;
+		int saf_id;
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public ISRCTN_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+		public ISRCTN_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			processor = new ISRCTN_Processor();
 			source = _source;
 			file_base = source.local_folder;
 			source_id = source.id;
-			sf_id = _sf_id;
+			saf_id = _saf_id;
 			file_writer = new FileWriter(source);
 			logging_repo = _logging_repo;
 		}
@@ -47,7 +47,7 @@ namespace DataDownloader.isrctn
 			for (int i = 1; i < 196; i++)
 			{
 				WebPage homePage = browser.NavigateToPage(new Uri(baseURL + i.ToString() + endURL));
-				processor.GetStudyDetails(browser, homePage, logging_repo, i, file_base, sf_id);
+				processor.GetStudyDetails(browser, homePage, logging_repo, i, file_base, saf_id);
 			}
 
 			return null;

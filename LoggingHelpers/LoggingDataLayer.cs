@@ -14,6 +14,7 @@ namespace DataDownloader
 	{
 		private string connString;
 		private Source source;
+		private string sql_file_select_string;
 
 
 		/// <summary>
@@ -37,6 +38,9 @@ namespace DataDownloader
 			builder.Database = "mon";
 			connString = builder.ConnectionString;
 
+			sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
+			sql_file_select_string += " assume_complete, download_status, local_path, last_saf_id, last_downloaded, ";
+			sql_file_select_string += " last_harvest_id, last_harvested, last_import_id, last_imported ";
 		}
 
 		public Source SourceParameters => source;
@@ -64,7 +68,7 @@ namespace DataDownloader
         {
 			using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = "select max(id) from sf.search_fetches ";
+				string sql_string = "select max(id) from sf.saf_events ";
 				int last_id = Conn.ExecuteScalar<int>(sql_string);
 				return last_id + 1;
 			}
@@ -76,8 +80,7 @@ namespace DataDownloader
 		{
 			using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = "select id, source_id, sd_id, remote_url, last_sf_id, last_revised, ";
-				sql_string += " assume_complete, download_status, download_datetime, local_path, last_processed ";
+				string sql_string = sql_file_select_string;
 				sql_string += " from sf.source_data_studies ";
 				sql_string += " where sd_id = '" + sd_id + "' and source_id = " + source_id.ToString();
 				return Conn.Query<StudyFileRecord>(sql_string).FirstOrDefault();
@@ -89,8 +92,7 @@ namespace DataDownloader
 		{
 			using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = "select id, source_id, sd_id, remote_url, last_sf_id, last_revised, ";
-				sql_string += " assume_complete, download_status, download_datetime, local_path, last_processed ";
+				string sql_string = sql_file_select_string;
 				sql_string += " from sf.source_data_objects ";
 				sql_string += " where sd_id = '" + sd_id + "' and source_id = " + source_id.ToString();
 				return Conn.Query<ObjectFileRecord>(sql_string).FirstOrDefault();
@@ -98,11 +100,11 @@ namespace DataDownloader
 		}
 
 
-		public int InsertSFLogRecord(SearchFetchRecord sfr)
+		public int InsertSAFEventRecord(SAFEvent saf)
 		{
 			using (var conn = new NpgsqlConnection(connString))
 			{
-				return (int)conn.Insert<SearchFetchRecord>(sfr);
+				return (int)conn.Insert<SAFEvent>(saf);
 			}
 		}
 
@@ -133,23 +135,19 @@ namespace DataDownloader
 			}
 		}
 
-
-		public void UpdateStudyFileRecLastProcessed(int id)
+		public int InsertObjectFileRec(ObjectFileRecord file_record)
 		{
 			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = "update sf.source_data_studies";
-				sql_string += " set last_processed = current_timestamp";
-				sql_string += " where id = " + id.ToString();
-				conn.Execute(sql_string);
+				return (int)conn.Insert<ObjectFileRecord>(file_record);
 			}
 		}
 
 
-		public bool UpdateDownloadLog(int source_id, string sd_id, string remote_url,
-						 int sf_id, DateTime? last_revised_date, string full_path)
+		public bool UpdateStudyDownloadLog(int source_id, string sd_id, string remote_url,
+						 int saf_id, DateTime? last_revised_date, string full_path)
 		{
-			bool added = false; // indicates iof a new record or update of an existing one
+			bool added = false; // indicates if a new record or update of an existing one
 
 			// Get the source data record and modify it
 			// or add a new one...
@@ -160,7 +158,7 @@ namespace DataDownloader
 				// this neeeds to have a new record
 				// check last revised date....???
 				// new record
-				file_record = new StudyFileRecord(source_id, sd_id, remote_url, sf_id,
+				file_record = new StudyFileRecord(source_id, sd_id, remote_url, saf_id,
 												last_revised_date, full_path);
 				InsertStudyFileRec(file_record);
 				added = true;
@@ -169,10 +167,10 @@ namespace DataDownloader
 			{
 				// update record
 				file_record.remote_url = remote_url;
-				file_record.last_sf_id = sf_id;
+				file_record.last_saf_id = saf_id;
 				file_record.last_revised = last_revised_date;
 				file_record.download_status = 2;
-				file_record.download_datetime = DateTime.Now;
+				file_record.last_downloaded = DateTime.Now;
 				file_record.local_path = full_path;
 
 				// Update file record
@@ -183,7 +181,44 @@ namespace DataDownloader
 		}
 
 
-		public ulong StoreRecs(PostgreSQLCopyHelper<StudyFileRecord> copyHelper, IEnumerable<StudyFileRecord> entities)
+		public bool UpdateObjectDownloadLog(int source_id, string sd_id, string remote_url,
+						 int saf_id, DateTime? last_revised_date, string full_path)
+		{
+			bool added = false; // indicates if a new record or update of an existing one
+
+			// Get the source data record and modify it
+			// or add a new one...
+			ObjectFileRecord file_record = FetchObjectFileRecord(sd_id, source_id);
+
+			if (file_record == null)
+			{
+				// this neeeds to have a new record
+				// check last revised date....???
+				// new record
+				file_record = new ObjectFileRecord(source_id, sd_id, remote_url, saf_id,
+												last_revised_date, full_path);
+				InsertObjectFileRec(file_record);
+				added = true;
+			}
+			else
+			{
+				// update record
+				file_record.remote_url = remote_url;
+				file_record.last_saf_id = saf_id;
+				file_record.last_revised = last_revised_date;
+				file_record.download_status = 2;
+				file_record.last_downloaded = DateTime.Now;
+				file_record.local_path = full_path;
+
+				// Update file record
+				StoreObjectFileRec(file_record);
+			}
+
+			return added;
+		}
+
+
+		public ulong StoreStudyRecs(PostgreSQLCopyHelper<StudyFileRecord> copyHelper, IEnumerable<StudyFileRecord> entities)
 		{
 			using (var conn = new NpgsqlConnection(connString))
 			{
@@ -193,32 +228,17 @@ namespace DataDownloader
 			}
 		}
 
-		/*
-		public int InsertSecondaryId(Secondary_Id secid)
+
+		public ulong StoreObjectRecs(PostgreSQLCopyHelper<ObjectFileRecord> copyHelper, IEnumerable<ObjectFileRecord> entities)
 		{
 			using (var conn = new NpgsqlConnection(connString))
 			{
-				return (int)conn.Insert<Secondary_Id>(secid);
+				conn.Open();
+				// Returns count of rows written 
+				return copyHelper.SaveAll(conn, entities);
 			}
 		}
 
-
-		public int InsertStudyFeature(StudyFeature f)
-		{
-			using (var conn = new NpgsqlConnection(connString))
-			{
-				return (int)conn.Insert<StudyFeature>(f);
-			}
-		}
-
-		public int InsertStudyCondition(StudyCondition c)
-		{
-			using (var conn = new NpgsqlConnection(connString))
-			{
-				return (int)conn.Insert<StudyCondition>(c);
-			}
-		}
-		*/
 	}
 }
 

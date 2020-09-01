@@ -18,7 +18,7 @@ namespace DataDownloader.isrctn
     {
 
         public void GetStudyDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo, 
-                                    int pagenum, string file_base, int sf_id)
+                                    int pagenum, string file_base, int saf_id)
         {
 
             // gets the details of each trial registry record
@@ -65,13 +65,13 @@ namespace DataDownloader.isrctn
                         file.Close();
 
                         // create new file record 
-                        file_records.Add(new StudyFileRecord(100126, st.isctrn_id, remote_link, sf_id, st.last_edited, full_path));
+                        file_records.Add(new StudyFileRecord(100126, st.isctrn_id, remote_link, saf_id, st.last_edited, full_path));
                     }
                 }
             }
 
             // store file records for the group, usually 100, from this page
-            logging_repo.StoreRecs(LoggingCopyHelper.file_record_copyhelper, file_records);
+            logging_repo.StoreStudyRecs(LoggingCopyHelper.file_record_copyhelper, file_records);
 
             //repo.StoreDatasetProperties(CopyHelpers.dataset_properties_helper,
                                        //  s.dataset_properties);

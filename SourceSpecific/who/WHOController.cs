@@ -19,18 +19,18 @@ namespace DataDownloader.who
 		Source source;		
 		string file_base;
 		FileWriter file_writer;
-		int sf_id;
+		int saf_id;
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public WHO_Controller(string _sourcefile, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+		public WHO_Controller(string _sourcefile, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			sourcefile = _sourcefile;
 			processor = new WHO_Processor();
 			source = _source;
 			file_base = source.local_folder;
 			source_id = source.id;
-			sf_id = _sf_id;
+			saf_id = _saf_id;
 			file_writer = new FileWriter(source);
 			logging_repo = _logging_repo;
 		}
@@ -80,7 +80,7 @@ namespace DataDownloader.who
 							string full_path = Path.Combine(file_base, file_name);
 
 							file_writer.WriteWHOSourcedFile(writer, r, full_path);
-							bool added = logging_repo.UpdateDownloadLog(r.source_id, r.sd_sid, r.remote_url, sf_id,
+							bool added = logging_repo.UpdateStudyDownloadLog(r.source_id, r.sd_sid, r.remote_url, saf_id,
 															   DateHelpers.FetchDateTimeFromISO(r.record_date), full_path);
 							res.num_downloaded++;
 							if (added) res.num_added++;

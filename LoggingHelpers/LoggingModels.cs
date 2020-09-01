@@ -31,7 +31,7 @@ namespace DataDownloader
 	}
 
 
-	[Table("sf.search_fetch_types")]
+	[Table("sf.saf_types")]
 	public class SFType
 	{
 		public int id { get; set; }
@@ -39,14 +39,14 @@ namespace DataDownloader
 		public bool requires_date { get; set; }
 		public bool requires_file { get; set; }
 		public bool requires_search_id { get; set; }
-		public bool requires_prev_sf_ids { get; set; }
+		public bool requires_prev_saf_ids { get; set; }
 		public string description { get; set; }
 		public string list_order { get; set; }
 	}
-		
 
-	[Table("sf.search_fetches")]
-	public class SearchFetchRecord
+
+	[Table("sf.saf_events")]
+	public class SAFEvent
 	{
 		[ExplicitKey]
 		public int id { get; set; }
@@ -57,51 +57,67 @@ namespace DataDownloader
 		public int? num_records_checked { get; set; }
 		public int? num_records_added { get; set; }
 		public int? num_records_downloaded { get; set; }
-		public int? focused_search_id { get; set; }
+		public int? filter_id { get; set; }
+		public string previous_saf_ids { get; set; }
+		public DateTime? cut_off_date { get; set; }
 		public string comments { get; set; }
-	}
-	
 
-	[Table("sf.source_data_studies")]
+		public SAFEvent() { }
+
+		public SAFEvent(int _id, int _source_id, int _type_id, int? _filter_id) 
+		{
+			id = _id;
+			source_id = _source_id;
+			type_id = _type_id;
+			filter_id = _filter_id;
+			time_started = DateTime.Now;
+		}
+	}
+
+
+		[Table("sf.source_data_studies")]
 	public class StudyFileRecord
 	{
 		public int id { get; set; }
 		public int source_id { get; set; }
 		public string sd_id { get; set; }
 		public string remote_url { get; set; }
-		public int last_sf_id { get; set; }
 		public DateTime? last_revised { get; set; }
 		public bool? assume_complete { get; set; }
 		public int download_status { get; set; }
-		public DateTime? download_datetime { get; set; }
 		public string local_path { get; set; }
-		public DateTime? last_processed { get; set; }
+		public int last_saf_id { get; set; }
+		public DateTime? last_downloaded { get; set; }
+		public int last_harvest_id { get; set; }
+		public DateTime? last_harvested { get; set; }
+		public int last_import_id { get; set; }
+		public DateTime? last_imported { get; set; }
 
 		// constructor when a revision data can be expected (not always there)
-		public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+		public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_saf_id,
 											  DateTime? _last_revised, string _local_path)
 		{
 			source_id = _source_id;
 			sd_id = _sd_id;
 			remote_url = _remote_url;
-			last_sf_id = _last_sf_id;
+			last_saf_id = _last_saf_id;
 			last_revised = _last_revised;
 			download_status = 2;
-			download_datetime = DateTime.Now;
+			last_downloaded = DateTime.Now;
 			local_path = _local_path;
 		}
 
 		// constructor when an 'assumed complete' judgement can be expected (not always there)
-		public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+		public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_saf_id,
 											  bool? _assume_complete, string _local_path)
 		{
 			source_id = _source_id;
 			sd_id = _sd_id;
 			remote_url = _remote_url;
-			last_sf_id = _last_sf_id;
+			last_saf_id = _last_saf_id;
 			assume_complete = _assume_complete;
 			download_status = 2;
-			download_datetime = DateTime.Now;
+			last_downloaded = DateTime.Now;
 			local_path = _local_path;
 		}
 
@@ -119,39 +135,42 @@ namespace DataDownloader
 		public int source_id { get; set; }
 		public string sd_id { get; set; }
 		public string remote_url { get; set; }
-		public int last_sf_id { get; set; }
 		public DateTime? last_revised { get; set; }
 		public bool? assume_complete { get; set; }
 		public int download_status { get; set; }
-		public DateTime? download_datetime { get; set; }
 		public string local_path { get; set; }
-		public DateTime? last_processed { get; set; }
+		public int last_saf_id { get; set; }
+		public DateTime? last_downloaded { get; set; }
+		public int last_harvest_id { get; set; }
+		public DateTime? last_harvested { get; set; }
+		public int last_import_id { get; set; }
+		public DateTime? last_imported { get; set; }
 
 		// constructor when a revision data can be expected (not always there)
-		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_saf_id,
 											  DateTime? _last_revised, string _local_path)
 		{
 			source_id = _source_id;
 			sd_id = _sd_id;
 			remote_url = _remote_url;
-			last_sf_id = _last_sf_id;
+			last_saf_id = _last_saf_id;
 			last_revised = _last_revised;
 			download_status = 2;
-			download_datetime = DateTime.Now;
+			last_downloaded = DateTime.Now;
 			local_path = _local_path;
 		}
 
 		// constructor when an 'assumed complete' judgement can be expected (not always there)
-		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_sf_id,
+		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_saf_id,
 											  bool? _assume_complete, string _local_path)
 		{
 			source_id = _source_id;
 			sd_id = _sd_id;
 			remote_url = _remote_url;
-			last_sf_id = _last_sf_id;
+			last_saf_id = _last_saf_id;
 			assume_complete = _assume_complete;
 			download_status = 2;
-			download_datetime = DateTime.Now;
+			last_downloaded = DateTime.Now;
 			local_path = _local_path;
 		}
 

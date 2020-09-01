@@ -21,10 +21,10 @@ namespace DataDownloader.pubmed
 		Source source;
 		string folder_base;
 		FileWriter file_writer;
-		int sf_id;
+		int saf_id;
 		int source_id;
 
-		public PubMed_Controller(int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+		public PubMed_Controller(int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			webClient = new HttpClient();
 			logging_repo = _logging_repo;
@@ -33,7 +33,7 @@ namespace DataDownloader.pubmed
 			folder_base = source.local_folder;
 			source_id = source.id;
 			file_writer = new FileWriter(source);
-			sf_id = _sf_id;
+			saf_id = _saf_id;
 			source_id = source.id;
 		}
 
@@ -80,7 +80,7 @@ namespace DataDownloader.pubmed
 
 			// store the contents in the data objects source file as required...
 			int total = pubmed_repo.ObtainTotalOfNewPMIDS();
-			pubmed_repo.TransferNewPMIDsToSourceDataTable(sf_id);
+			pubmed_repo.TransferNewPMIDsToSourceDataTable(saf_id);
 
 			pubmed_repo.DropTempPMIDBySourceTable();
 			pubmed_repo.DropTempPMIDCollectorTable();
@@ -160,14 +160,14 @@ namespace DataDownloader.pubmed
 							{
 								file_record.download_status = 2;
 								file_record.last_revised = date_last_revised;
-								file_record.download_datetime = DateTime.Now;
+								file_record.last_downloaded = DateTime.Now;
 								file_record.local_path = full_path;
 							}
 						}
 						else
 						{
 							// normally should be less then but here <= to be sure
-							if (date_last_revised != null && file_record.download_datetime <= date_last_revised)
+							if (date_last_revised != null && file_record.last_downloaded <= date_last_revised)
 							{
 								full_path = file_record.local_path;
 								// ensure can over write
@@ -180,10 +180,10 @@ namespace DataDownloader.pubmed
 									article.WriteTo(writer);
 								}
 								file_record.last_revised = date_last_revised;
-								file_record.download_datetime = DateTime.Now;
+								file_record.last_downloaded = DateTime.Now;
 							}
 						}
-						file_record.last_sf_id = sf_id;
+						file_record.last_saf_id = saf_id;
 						logging_repo.StoreObjectFileRec(file_record);
 					}
 				}

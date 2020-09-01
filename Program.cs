@@ -86,10 +86,10 @@ namespace DataDownloader
 				}
 			}
 
-			args.focused_search_id = opts.focused_search_id;
+			args.filter_id = opts.focused_search_id;
 			if (sf_type.requires_search_id)
 			{
-				if (args.focused_search_id == 0 || args.focused_search_id == null)
+				if (args.filter_id == 0 || args.filter_id == null)
 				{
 					WriteLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
 					WriteLine("and no valid file path and name is supplied");
@@ -99,7 +99,7 @@ namespace DataDownloader
 
 
 			args.previous_searches = opts.previous_searches;
-			if (sf_type.requires_prev_sf_ids)
+			if (sf_type.requires_prev_saf_ids)
 			{
 				if (args.previous_searches.Count() == 0)
 				{
@@ -141,7 +141,7 @@ namespace DataDownloader
 		[Option('d', "cutoff_date", Required = false, HelpText = "Only data revised or added since this date will be considered")]
 		public string cutoff_date { get; set; }
 
-		[Option('q', "focused_search_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
+		[Option('q', "filter_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
 		public int focused_search_id { get; set; }
 
 		[Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
@@ -159,7 +159,7 @@ namespace DataDownloader
 		public int type_id { get; set; }
 		public string file_name { get; set; }
 		public DateTime? cutoff_date { get; set; }
-		public int? focused_search_id { get; set; }
+		public int? filter_id { get; set; }
 		public IEnumerable<int> previous_searches { get; set; }
 		public bool no_logging { get; set; }
 	}

@@ -18,7 +18,7 @@ namespace DataDownloader.ctg
     {
 
         public void GetStudyDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo, 
-                                    int pagenum, string file_base, int sf_id)
+                                    int pagenum, string file_base, int saf_id)
         {
 
             // gets the details of each trial registry record

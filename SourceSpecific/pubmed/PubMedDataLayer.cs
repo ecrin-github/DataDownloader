@@ -152,14 +152,14 @@ namespace DataDownloader.pubmed
 			}
 		}
 
-		public void TransferNewPMIDsToSourceDataTable(int last_sf_id)
+		public void TransferNewPMIDsToSourceDataTable(int last_saf_id)
 		{
 			using (var conn = new NpgsqlConnection(mon_sf_connString))
 			{
 				string sql_string = @"INSERT INTO sf.source_data_objects(
-				          source_id, sd_id, remote_url, last_sf_id, download_status) 
+				          source_id, sd_id, remote_url, last_saf_id, download_status) 
 				          SELECT 100135, pmid, 'https://www.ncbi.nlm.nih.gov/pubmed/' || pmid, "
-						  + last_sf_id.ToString() + @", 0
+						  + last_saf_id.ToString() + @", 0
 						  FROM sf.temp_pmid_collector";
 				conn.Execute(sql_string);
 			}
@@ -226,7 +226,7 @@ namespace DataDownloader.pubmed
 		{
 			using (var conn = new NpgsqlConnection(mon_sf_connString))
 			{
-				string query_string = "select id, source_id, sd_id, remote_url, lastsf_id, remote_last_revised, ";
+				string query_string = "select id, source_id, sd_id, remote_url, lastsaf_id, remote_last_revised, ";
 				query_string += " download_status, download_datetime, local_path, local_last_revised ";
 				query_string += " from sf.object_source_data where sd_id = '" + pmid + "';";
 				return conn.Query<ObjectFileRecord>(query_string).FirstOrDefault();

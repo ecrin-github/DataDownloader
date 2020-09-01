@@ -18,11 +18,11 @@ namespace DataDownloader.yoda
 		Source source;		
 		string file_base;
 		FileWriter file_writer;
-		int sf_id;
+		int saf_id;
 		int source_id;
 		LoggingDataLayer logging_repo;
 
-		public Yoda_Controller(ScrapingBrowser _browser, int _sf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+		public Yoda_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
 		{
 			browser = _browser;
 			yoda_repo = new YodaDataLayer();
@@ -30,7 +30,7 @@ namespace DataDownloader.yoda
 			source = _source;
 			file_base = source.local_folder;
 			source_id = source.id;
-			sf_id = _sf_id;
+			saf_id = _saf_id;
 			file_writer = new FileWriter(source);
 			logging_repo = _logging_repo;
 		}
@@ -81,7 +81,7 @@ namespace DataDownloader.yoda
 					string file_name = source.local_file_prefix + st.sd_sid + ".xml";
 					string full_path = Path.Combine(file_base, file_name);
 					file_writer.WriteYodaFile(writer, st, full_path);
-					bool added = logging_repo.UpdateDownloadLog(source_id, st.sd_sid, st.remote_url, sf_id,
+					bool added = logging_repo.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, saf_id,
 													  st.last_revised_date, full_path);
 					res.num_downloaded++;
 					if (added) res.num_added++;
@@ -92,8 +92,7 @@ namespace DataDownloader.yoda
 				}
 
 				Console.WriteLine(res.num_checked.ToString());
-
-			}
+     		}
 
 			return res;
 		}
