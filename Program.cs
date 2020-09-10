@@ -114,7 +114,7 @@ namespace DataDownloader
 			args.no_logging = opts.no_logging;
 
 			Downloader dl = new Downloader();
-			dl.RunDownloader(args, source);
+			dl.RunDownloaderAsync(args, source);
 		}
 
 		static void HandleParseError(IEnumerable<Error> errs)
@@ -132,7 +132,7 @@ namespace DataDownloader
 		[Option('s', "source", Required = true, HelpText = "Integer id of data source.")]
 		public int source_id { get; set; }
 
-		[Option('t', "sf_type_id", Required = true, HelpText = "Integer id representing tpe of search / fetch.")]
+		[Option('t', "sf_type_id", Required = true, HelpText = "Integer id representing type of search / fetch.")]
 		public int search_fetch_type_id { get; set; }
 
 		[Option('f', "file_name", Required = false, HelpText = "Filename of csv file with data.")]

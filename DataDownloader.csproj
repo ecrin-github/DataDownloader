@@ -24,8 +24,4 @@
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="SourceSpecific\pubmed\" />
-  </ItemGroup>
-
 </Project>

@@ -7,17 +7,21 @@ using System.Linq;
 using System.Collections.Generic;
 using PostgreSQLCopyHelper;
 using System.Net.Http.Headers;
+using System.Net.Http;
+using System.Xml.Serialization;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace DataDownloader.pubmed
 {
 	public class PubMedDataLayer
 	{
-		private string biolincc_ad_connString;
-		private string yoda_ad_connString;
-		private string ctg_ad_connString;
-		private string euctr_ad_connString;
-		private string isrctn_ad_connString;
-		private string mon_sf_connString;
+		NpgsqlConnectionStringBuilder builder;
+		private string connString;
+		private string mon_connString;
+
+		private string context_connString;
+		private string folder_base;
 
 		/// <summary>
 		/// Parameterless constructor is used to automatically build
@@ -34,161 +38,241 @@ namespace DataDownloader.pubmed
 				.AddJsonFile("appsettings.json")
 				.Build();
 
-			NpgsqlConnectionStringBuilder builder = new NpgsqlConnectionStringBuilder();
+			builder = new NpgsqlConnectionStringBuilder();
 			builder.Host = settings["host"];
 			builder.Username = settings["user"];
 			builder.Password = settings["password"];
+			builder.Database = "pubmed";
 
-			builder.Database = "biolincc";
-			builder.SearchPath = "ad";
-			biolincc_ad_connString = builder.ConnectionString;
-
-			builder.Database = "ctg";
-			builder.SearchPath = "ad";
-			ctg_ad_connString = builder.ConnectionString;
-
-			builder.Database = "yoda";
-			builder.SearchPath = "ad";
-			yoda_ad_connString = builder.ConnectionString;
-
-			builder.Database = "euctr";
-			builder.SearchPath = "ad";
-			euctr_ad_connString = builder.ConnectionString;
-
-			builder.Database = "isrctn";
-			builder.SearchPath = "ad";
-			isrctn_ad_connString = builder.ConnectionString;
+			connString = builder.ConnectionString;
 
 			builder.Database = "mon";
-			builder.SearchPath = "sf";
-			mon_sf_connString = builder.ConnectionString;
+			mon_connString = builder.ConnectionString;
 
+			builder.Database = "context";
+			context_connString = builder.ConnectionString;
 
-			// example appsettings.json file...
-			// the only values required are for...
-			// {
-			//	  "host": "host_name...",
-			//	  "user": "user_name...",
-			//    "password": "user_password...",
-			//	  "folder_base": "C:\\MDR JSON\\Object JSON... "
-			// }
+			folder_base = settings["folder_base"];
 		}
 
 
-		public IEnumerable<pmid_holder> FetchReferences(string source )
-		{
-			string conn_string = "";
-			switch (source)
-			{
-				case "biolincc": {conn_string = biolincc_ad_connString; break; }
-				case "yoda": {conn_string = yoda_ad_connString; break; }
-				case "isrctn": {conn_string = isrctn_ad_connString; break; }
-				case "euctr": { conn_string = euctr_ad_connString; break; }
-				case "ctg": {conn_string = ctg_ad_connString; break; }
-			}
+		// Tables and functions used for the PMIDs collected from DB Sources
 
-			using (var conn = new NpgsqlConnection(conn_string))
+		public IEnumerable<Source> FetchSourcesWithReferences()
+		{
+			using (var conn = new NpgsqlConnection(mon_connString))
+			{
+				string sql_string = @"select * from sf.source_parameters
+                where has_study_references = true";
+				return conn.Query<Source>(sql_string);
+			}
+		}
+
+        public void SetUpTempPMIDsBySourceTable()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmid_by_source;
+                        CREATE TABLE IF NOT EXISTS pp.temp_pmid_by_source(
+				        pmid varchar) ";
+				conn.Execute(sql_string);
+			}
+		}
+
+		public void SetUpSourcePMIDsTable()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
+                       CREATE TABLE IF NOT EXISTS pp.pmids_by_source_total(
+				         source_id int
+                       , pmid varchar)";
+				conn.Execute(sql_string);
+			}
+		}		
+
+		public void TruncateTempPMIDsBySourceTable()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"TRUNCATE TABLE pp.temp_pmid_by_source";
+				conn.Execute(sql_string);
+			}
+		}
+
+        public IEnumerable<pmid_holder> FetchReferences(string db_name)
+		{
+			builder.Database = db_name;
+			string db_conn_string = builder.ConnectionString;
+
+			using (var conn = new NpgsqlConnection(db_conn_string))
 			{
 				string sql_string = @"SELECT DISTINCT pmid from ad.study_references 
 				        where pmid is not null";
 				return conn.Query<pmid_holder>(sql_string);
 			}
 		}
-
-
-		public void SetUpTempPMIDBySourceTable()
+		
+		public ulong StorePmidsBySource(PostgreSQLCopyHelper<pmid_holder> copyHelper, 
+			         IEnumerable<pmid_holder> entities)
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = @"CREATE TABLE IF NOT EXISTS sf.temp_pmid_by_source(
-				        pmid varchar) ";
-				conn.Execute(sql_string);
+				conn.Open();
+				return copyHelper.SaveAll(conn, entities);
 			}
 		}
-
-		public void TruncatePMIDBySourceTable()
+		
+		public void TransferSourcePMIDsToTotalTable(int source_id)
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = @"TRUNCATE TABLE sf.temp_pmid_by_source";
-				conn.Execute(sql_string);
-			}
-		}
-
-		public void SetUpTempPMIDCollectorTable()
-		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
-			{
-				string sql_string = @"CREATE TABLE IF NOT EXISTS sf.temp_pmid_collector(
-				         source_id int
-                       , pmid varchar)";
-				conn.Execute(sql_string);
-			}
-		}
-
-		public void TransferPMIDsToCollectorTable(int source_id)
-		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
-			{
-				string sql_string = @"INSERT INTO sf.temp_pmid_collector(
+				string sql_string = @"INSERT INTO pp.pmids_by_source_total(
 				          source_id, pmid) 
-                          SELECT " + source_id.ToString()  + @", t.pmid
-						  FROM sf.temp_pmid_by_source t
-                          LEFT JOIN 
-                               (select sd_id from sf.source_data_objects
-                                where source_id = 100135) s
-                          ON t.pmid = s.sd_id
-                          WHERE s.sd_id is null";
+                          SELECT " + source_id.ToString() + @", t.pmid
+						  FROM pp.temp_pmid_by_source;";
 				conn.Execute(sql_string);
 			}
 		}
 
-		public int ObtainTotalOfNewPMIDS()
-		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+		public IEnumerable<pmid_holder> FetchDistinctSourcesPMIDs()
+        {
+			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = @"SELECT COUNT(*) FROM sf.temp_pmid_collector";
+				string sql_string = @"select distinct pmid 
+						  FROM pp.temp_pmid_collector;";
+				return conn.Query<pmid_holder>(sql_string);
+			}
+		}
+
+        public int ObtainTotalOfPMIDSBySource()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"SELECT COUNT(*) FROM pp.pmids_by_source_total";
 				return conn.ExecuteScalar<int>(sql_string);
 			}
 		}
 
+
+		// Tables and functions used for the PMIDs collected from Pubmed Bank references
+
+        public IEnumerable<PMSource> FetchDatabanks()
+		{
+			using (NpgsqlConnection Conn = new NpgsqlConnection(context_connString))
+			{
+				string SQLString = "select id, nlm_abbrev from ctx.nlm_databanks where bank_type = 'Trial registry'";
+				return Conn.Query<PMSource>(SQLString);
+			}
+		}		
+
+        public void SetUpTempPMIDsByBankTable()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmid_by_bank;
+                     CREATE TABLE IF NOT EXISTS pp.temp_pmid_by_bank(
+                        pmid varchar)";
+				conn.Execute(sql_string);
+			}
+		}
+
+		public void SetUpBankPMIDsTable()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_bank_total;
+                       CREATE TABLE IF NOT EXISTS pp.pmids_by_bank_total(
+				         bank_id int
+                       , pmid varchar)";
+				conn.Execute(sql_string);
+			}
+		}
+		
+		public async Task<int> GetDataCountAsync(string url)
+		{
+			try
+			{
+				HttpClient webClient = new HttpClient();
+				string responseBody = await webClient.GetStringAsync(url);
+				XmlSerializer xSerializer = new XmlSerializer(typeof(eSearchResult));
+				using (TextReader reader = new StringReader(responseBody))
+				{
+					// The eSearchResult class was generated automaticaly using the xsd.exe tool
+
+					eSearchResult result = (eSearchResult)xSerializer.Deserialize(reader);
+					if (result != null)
+					{
+						return result.Count;
+					}
+					else
+					{
+						return 0;
+					}
+				}
+			}
+
+			catch (HttpRequestException e)
+			{
+				Console.WriteLine("\nException Caught!");
+				Console.WriteLine("Message :{0} ", e.Message);
+				return 0;
+			}
+		}
+		
+		
+		
+		public void TruncateTempPMIDsByBankTable()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"TRUNCATE TABLE pp.temp_pmid_by_bank";
+				conn.Execute(sql_string);
+			}
+		}
+
+		public ulong StorePMIDsByBank(PostgreSQLCopyHelper<FoundResult> copyHelper,
+					 IEnumerable<FoundResult> entities)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				conn.Open();
+				return copyHelper.SaveAll(conn, entities);
+			}
+		}
+
+
 		public void TransferNewPMIDsToSourceDataTable(int last_saf_id)
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(mon_connString))
 			{
 				string sql_string = @"INSERT INTO sf.source_data_objects(
 				          source_id, sd_id, remote_url, last_saf_id, download_status) 
 				          SELECT 100135, pmid, 'https://www.ncbi.nlm.nih.gov/pubmed/' || pmid, "
 						  + last_saf_id.ToString() + @", 0
-						  FROM sf.temp_pmid_collector";
+						  FROM pp.temp_pmid_collector";
 				conn.Execute(sql_string);
 			}
 		}
+
+
 
 		public void DropTempPMIDBySourceTable()
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = "DROP TABLE IF EXISTS sf.temp_pmid_by_source";
+				string sql_string = "DROP TABLE IF EXISTS pp.temp_pmid_by_source";
 				conn.Execute(sql_string);
 			}
 		}
+
 
 		public void DropTempPMIDCollectorTable()
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = "DROP TABLE IF EXISTS sf.temp_pmid_collector";
+				string sql_string = "DROP TABLE IF EXISTS pp.temp_pmid_collector";
 				conn.Execute(sql_string);
-			}
-		}
-
-		public ulong StorePmids(PostgreSQLCopyHelper<pmid_holder> copyHelper, IEnumerable<pmid_holder> entities)
-		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
-			{
-				conn.Open();
-				return copyHelper.SaveAll(conn, entities);
 			}
 		}
 
@@ -197,7 +281,7 @@ namespace DataDownloader.pubmed
 
 		public int GetSourceRecordCount()
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(mon_connString))
 			{
 				string query_string = @"SELECT COUNT(*) FROM sf.source_data_objects 
                                 WHERE source_id = 100135 AND download_status = 0";
@@ -206,12 +290,32 @@ namespace DataDownloader.pubmed
 		}
 
 
-		// Uses the string_agg function in Postgres to retuen the 10 Ids 
+		// This function does an initial query of the PubMed API to see how many records there 
+		// are altogether, to fetch in the following loop - MOVE to PubMed Repo
+
+		
+
+
+		// Returns the total number of PubMed Ids
+
+		public int GetTotalRecordCount()
+		{
+			using (NpgsqlConnection Conn = new NpgsqlConnection(mon_connString))
+			{
+				string query_string = @"SELECT COUNT(*) FROM sf.source_data_objects 
+                                WHERE source_id = 100135";
+				return Conn.ExecuteScalar<int>(query_string);
+			}
+		}
+
+
+
+		// Uses the string_agg function in Postgres to return the 10 Ids 
 		// being retrieved as a comma delimited string.
 
 		public string FetchIdString(int skip)
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (var conn = new NpgsqlConnection(mon_connString))
 			{
 				string query_string = @"select STRING_AGG(recs.pmid, ',') FROM 
 				                     (SELECT sd_id as pmid FROM sf.source_data_objects 
@@ -221,44 +325,33 @@ namespace DataDownloader.pubmed
 			}
 		}
 
+
+		// stores the ids and titles obtained from the API call
+
+		public ulong StorePMIDList(PostgreSQLCopyHelper<FoundResult> copyHelper, IEnumerable<FoundResult> entities)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				conn.Open();
+				return copyHelper.SaveAll(conn, entities);
+			}
+		}
+
 		/*
 		public ObjectFileRecord FetchRecordByPMID(string pmid)
 		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
+			using (NpgsqlConnection Conn = new NpgsqlConnection(mon_connString))
 			{
-				string query_string = "select id, source_id, sd_id, remote_url, lastsaf_id, remote_last_revised, ";
+				string query_string = "select id, source_id, sd_id, remote_url, remote_lastsf_id, remote_last_revised, ";
 				query_string += " download_status, download_datetime, local_path, local_last_revised ";
 				query_string += " from sf.object_source_data where sd_id = '" + pmid + "';";
-				return conn.Query<ObjectFileRecord>(query_string).FirstOrDefault();
+				return Conn.Query<ObjectFileRecord>(query_string).FirstOrDefault();
 			}
 		}
+		*/
 
-		public void Update_Record(ObjectFileRecord file_record)
-		{
-			using (var conn = new NpgsqlConnection(mon_sf_connString))
-			{
-				conn.Update<ObjectFileRecord>(file_record);
-			}
-		}
-
-	*/
-
-	}
-
-
-	public class pmid_holder
-	{
-		public string pmid { get; set; }
-	}
-
-
-	public class CopyHelper
-	{
-	       public PostgreSQLCopyHelper<pmid_holder> pubmed_ids_helper =
-				new PostgreSQLCopyHelper<pmid_holder>("sf", "temp_pmid_by_source")
-					.MapVarchar("pmid", x => x.pmid); 
-					 
 	}
 
 }
+
 

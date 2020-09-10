@@ -28,7 +28,7 @@ namespace DataDownloader
 			browser.Encoding = Encoding.UTF8;
 		}
 
-		public void RunDownloader(Args args, Source source)
+		public async void RunDownloaderAsync(Args args, Source source)
 		{
     		// Identify source type and location, destination folder
 
@@ -96,6 +96,9 @@ namespace DataDownloader
 				case 100135:
 					{
 						// PubMed
+						// See notes at top of PubMed controller for explanation of different download types
+						PubMed_Controller pubmed_controller = new PubMed_Controller(saf_id, source, args, logging_repo);
+						res = await pubmed_controller.ProcessDataAsync();
 						break;
 					}
 				case 101940:
