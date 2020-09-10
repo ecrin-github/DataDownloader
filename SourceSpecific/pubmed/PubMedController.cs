@@ -59,7 +59,6 @@ namespace DataDownloader.pubmed
 		int source_id;
 		Args args;
 		XmlWriterSettings settings;
-		DownloadResult res;
 
 		public PubMed_Controller(int _saf_id, Source _source, Args _args, LoggingDataLayer _logging_repo)
 		{
@@ -78,10 +77,9 @@ namespace DataDownloader.pubmed
 			settings.Encoding = System.Text.Encoding.UTF8;
 		}
 
-
 		public async Task<DownloadResult> ProcessDataAsync()
-        {   
-			res = new DownloadResult();
+        {
+			DownloadResult res = null;
 			if (saf_id == 114 && args.filter_id == 10003)
 			{
 				// download pmids with references to trial registries, that
@@ -111,9 +109,6 @@ namespace DataDownloader.pubmed
 			return res;
 		}
 
-		// examines the study_reference data in the trial registry databases
-		// to try and identify the PubMed data that needs to be downloaded through the API
-
 		public void CreatePMIDsListfromSources()
 		{
 			// Establish tables and support objects
@@ -137,23 +132,15 @@ namespace DataDownloader.pubmed
 			pubmed_repo.DropTempPMIDBySourceTable();
 		}
 
-
-		// Uses the newly identified PMID rferences, from CalcPMIDList, not so far downloaded, 
-		// and adds them to the local file storage, updating the record
-
 		public async Task<DownloadResult> DownloadPubmedEntriesUsingSourcesAsync()
         {
 			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?";
 			baseURL += "tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
-			string folder_name, filename, full_path;
 			
 			// get list of relevant PMIDs into memory
 			IEnumerable<pmid_holder> references;
 			references = pubmed_repo.FetchDistinctSourcesPMIDs();
-			            
-			res.num_checked = 0;
-			res.num_downloaded = 0;
-			res.num_added = 0;
+			DownloadResult res = new DownloadResult();
 			bool ignore_revision_date = (saf_id == 121) ? true : false;
 
 			try
@@ -177,60 +164,22 @@ namespace DataDownloader.pubmed
 					xdoc.LoadXml(responseBody);
 					XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
 
-					// For each article node, get last revised date in each case
-					// If a new file, or a file that has been revised,
-					// use the xmlwriter to create a file
-					// and then update the record in the object source table
+					// Consider each article node in turn
 
 					foreach (XmlNode article in articles)
 					{
 						string pmid = article.SelectSingleNode("MedlineCitation/PMID").InnerText;
 						if (Int32.TryParse(pmid, out int ipmid))
 						{
-							// get current record in file download table
-						    ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, 100135);
-							res.num_checked++;
+							// get current or new file download record, calculate
+							// and store last revised date. Write new or replace
+							// file and update file_record (by ref).
 
-							if (file_record == null)
-							{
-								// this is not yet in the table - create a new record
-								file_record = new ObjectFileRecord();
-								file_record.source_id = 100135;
-								file_record.sd_id = pmid;
-								file_record.download_status = 0;
-							}
-
-							DateTime? date_last_revised = null;
-							DateTime date_last_fetched = DateTime.Now;
-
-							string year = article.SelectSingleNode("MedlineCitation/DateRevised/Year").InnerText ?? "";
-							string month = article.SelectSingleNode("MedlineCitation/DateRevised/Month").InnerText ?? "";
-							string day = article.SelectSingleNode("MedlineCitation/DateRevised/Day").InnerText ?? "";
-
-							if (year != "" && month != "" && day != "")
-							{
-								if (Int32.TryParse(year, out int iyear) && Int32.TryParse(month, out int imonth) && Int32.TryParse(day, out int iday))
-								{
-									date_last_revised = new DateTime(iyear, imonth, iday);
-								}
-							}
-
+							ObjectFileRecord file_record = GetObjectRecord(pmid);
+							file_record.last_revised = GetDateLastRevised(article);
 							if (file_record.download_status == 0)
 							{
-								// write file and indicate download done
-								folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
-								filename = "PM" + ipmid.ToString("000000000") + ".xml";
-								full_path = Path.Combine(folder_name, filename);
-
-								using (XmlWriter writer = XmlWriter.Create(full_path, settings))
-								{
-									article.WriteTo(writer);
-								}
-
-								file_record.local_path = full_path;
-								file_record.download_status = 2;
-								file_record.last_revised = date_last_revised;
-								file_record.last_downloaded = DateTime.Now;
+								WriteNewFile(article, ipmid, file_record);
 								res.num_added++;
 								res.num_downloaded++;
 							}
@@ -238,20 +187,10 @@ namespace DataDownloader.pubmed
 							{
 								// normally should be less then but here <= to be sure
 								if (ignore_revision_date || 
-									     (date_last_revised != null && file_record.last_downloaded <= date_last_revised))
+									     (file_record.last_revised != null 
+										   && file_record.last_downloaded <= file_record.last_revised))
 								{
-									full_path = file_record.local_path;
-									// ensure can over write
-									if (File.Exists(full_path))
-									{
-										File.Delete(full_path);
-									}
-									using (XmlWriter writer = XmlWriter.Create(full_path, settings))
-									{
-										article.WriteTo(writer);
-									}
-									file_record.last_revised = date_last_revised;
-									file_record.last_downloaded = DateTime.Now;
+									ReplaceFile(article, file_record);
 									res.num_downloaded++;
 								}
 							}
@@ -273,9 +212,7 @@ namespace DataDownloader.pubmed
 				Console.WriteLine("Message :{0} ", e.Message);
 				return res;
 			}
-
         }
-
 
 		public async Task CreatePMIDsListfromBanksAsync()
 		{
@@ -284,6 +221,7 @@ namespace DataDownloader.pubmed
 			string search_term;
 			CopyHelpers helper = new CopyHelpers();
 			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
+			bool include_dates = (saf_id == 114) ? true : false;
 
 			pubmed_repo.SetUpTempPMIDsByBankTable();
 			pubmed_repo.SetUpBankPMIDsTable();
@@ -296,10 +234,19 @@ namespace DataDownloader.pubmed
 				// get databank details
 				bank_id = s.id;
 				search_term = s.nlm_abbrev + "[SI]";
+				if (include_dates)
+                {
+					string today = DateTime.Now.ToString("yyyy/MM/dd");
+					string cutoff = ((DateTime)args.cutoff_date).ToString("yyyy/MM/dd");
+					string date_term = "&mindate=" + cutoff + "&maxdate=" + today + "&datetype=mdat";
+					search_term += date_term;
+				}
+				string url = baseURL + search_term;
+
 
 				// Get the number of total records that have this databank reference
 				// and calculate the loop parameters
-				totalRecords = await pubmed_repo.GetDataCountAsync(baseURL + search_term);
+				totalRecords = await pubmed_repo.GetDataCountAsync(url);
 				numCallsNeeded = (int)(totalRecords / retmax) + 1;
 				pubmed_repo.TruncateTempPMIDsByBankTable();
 
@@ -312,11 +259,10 @@ namespace DataDownloader.pubmed
 					{
 						int start = i * 1000;
 						string selectedRecords = "&retstart=" + start.ToString() + "&retmax=" + retmax.ToString();
-						string url = baseURL + search_term + selectedRecords;
 
 						// Put a 2 second pause beefore each call.
 						await Task.Delay(2000);
-						string responseBody = await webClient.GetStringAsync(url);
+						string responseBody = await webClient.GetStringAsync(url + selectedRecords);
 
 						// The eSearchResult class allows the returned json string to be easily deserialised
 						// and the required values, of each Id in the IdList, can then be read.
@@ -350,34 +296,25 @@ namespace DataDownloader.pubmed
 				}
 
 				// transfer across to total table...
-
+				pubmed_repo.TransferBankPMIDsToTotalTable(s.nlm_abbrev);
 
 			}
 		}
 
-
-		// Uses all the pubmed records in the source_object_data table
-		// If not yet downloaded - downloads and updates
-		// if already downloaded - checks last revisded date and dxownloads if revised since
-
 		public async Task<DownloadResult> DownloadPubmedEntriesUsingBanksAsync()
 		{
+			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?";
+			baseURL += "tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
+
+			// get list of relevant PMIDs into memory
+			IEnumerable<pmid_holder> references;
+			references = pubmed_repo.FetchDistinctBanksPMIDs();
+			DownloadResult res = new DownloadResult();
+
 			try
 			{
-				// Get number of pubmed records in sf.source_data_objects,
-				// includes all pubmed records whatever the download status
-				int DataRecordCount = pubmed_repo.GetTotalRecordCount();
-
-				// Fetch the result set (10 citations from a pre-fetched list of databank related records).
-				string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
-				//https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&mindate=2020/07/21&maxdate=2020/09/01&datetype=mdat
-				string folder_name, filename, full_path;
-				res.num_checked = 0;
-				res.num_downloaded = 0;
-				res.num_added = 0;
-
-				// loop through 10 at a time
-				for (int i = 0; i < DataRecordCount; i += 10)
+				// Fetch the result set, loop through 10 at a time
+				for (int i = 0; i < references.Count(); i += 10)
 				{
 					// if (i > 50) break; // when testing...
 
@@ -396,10 +333,7 @@ namespace DataDownloader.pubmed
 					xdoc.LoadXml(responseBody);
 					XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
 
-					// For each article node, get last revised date in each case
-					// If a new file, or a file that has been revised,
-					// use the xmlwriter to create a file
-					// and then update the record in the object source table
+					// Go through each article node in turn
 
 					foreach (XmlNode article in articles)
 					{
@@ -408,61 +342,23 @@ namespace DataDownloader.pubmed
 
 						if (Int32.TryParse(pmid, out int ipmid))
 						{
-							DateTime? date_last_revised = null;
-							DateTime date_last_fetched = DateTime.Now;
+							// get current or new record in file download table and
+							// update last revised date. Write a new or replace an 
+							// existing file and update thenfile record (by ref).
 
-							string year = article.SelectSingleNode("MedlineCitation/DateRevised/Year").InnerText ?? "";
-							string month = article.SelectSingleNode("MedlineCitation/DateRevised/Month").InnerText ?? "";
-							string day = article.SelectSingleNode("MedlineCitation/DateRevised/Day").InnerText ?? "";
+							ObjectFileRecord file_record = GetObjectRecord(pmid);
+							file_record.last_revised = GetDateLastRevised(article);
 
-							if (year != "" && month != "" && day != "")
-							{
-								if (Int32.TryParse(year, out int iyear) && Int32.TryParse(month, out int imonth) && Int32.TryParse(day, out int iday))
-								{
-									date_last_revised = new DateTime(iyear, imonth, iday);
-								}
-							}
-
-							// get current record in file download table
-							ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, 100135);
-		
 							if (file_record.download_status == 0)
 							{
-                                folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
-							    filename = "PM" + ipmid.ToString("000000000") + ".xml";
-							    full_path = Path.Combine(folder_name, filename);
-
-								using (XmlWriter writer = XmlWriter.Create(full_path, settings))
-								{
-									article.WriteTo(writer);
-								}
-
-								file_record.local_path = full_path;
-								file_record.download_status = 2;
-								file_record.last_revised = date_last_revised;
-								file_record.last_downloaded = DateTime.Now;
+								WriteNewFile(article, ipmid, file_record);
 								res.num_added++;
 								res.num_downloaded++;
 							}
 							else
 							{
-								// normally should be less then but here <= to be sure
-								if (date_last_revised != null && file_record.last_downloaded <= date_last_revised)
-								{
-									full_path = file_record.local_path;
-									// ensure can over write
-									if (File.Exists(full_path))
-									{
-										File.Delete(full_path);
-									}
-									using (XmlWriter writer = XmlWriter.Create(full_path, settings))
-									{
-										article.WriteTo(writer);
-									}
-									file_record.last_revised = date_last_revised;
-									file_record.last_downloaded = DateTime.Now;
-									res.num_downloaded++;
-								}
+								ReplaceFile(article, file_record);
+								res.num_downloaded++;
 							}
 							file_record.last_saf_id = saf_id;
 							logging_repo.StoreObjectFileRec(file_record);
@@ -482,6 +378,74 @@ namespace DataDownloader.pubmed
 				Console.WriteLine("Message :{0} ", e.Message);
 				return res;
 			}
+		}
+
+
+		public ObjectFileRecord GetObjectRecord(string pmid)
+		{
+			// get current record in file download table
+			ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, 100135);
+
+			if (file_record == null)
+			{
+				// this is not yet in the table - create a new record
+				file_record = new ObjectFileRecord();
+				file_record.source_id = 100135;
+				file_record.sd_id = pmid;
+				file_record.download_status = 0;
+			}
+			return file_record;
+		}
+
+		private DateTime? GetDateLastRevised(XmlNode article)
+		{
+			DateTime? date_last_revised = null;
+
+			string year = article.SelectSingleNode("MedlineCitation/DateRevised/Year").InnerText ?? "";
+			string month = article.SelectSingleNode("MedlineCitation/DateRevised/Month").InnerText ?? "";
+			string day = article.SelectSingleNode("MedlineCitation/DateRevised/Day").InnerText ?? "";
+
+			if (year != "" && month != "" && day != "")
+			{
+				if (Int32.TryParse(year, out int iyear) 
+				&& Int32.TryParse(month, out int imonth)
+				&& Int32.TryParse(day, out int iday))
+				{
+					date_last_revised = new DateTime(iyear, imonth, iday);
+				}
+			}
+			return date_last_revised;
+		}
+
+		private void WriteNewFile(XmlNode article, int ipmid, ObjectFileRecord file_record)
+		{
+			string folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
+			string filename = "PM" + ipmid.ToString("000000000") + ".xml";
+			string full_path = Path.Combine(folder_name, filename);
+
+			using (XmlWriter writer = XmlWriter.Create(full_path, settings))
+			{
+				article.WriteTo(writer);
+			}
+
+			file_record.local_path = full_path;
+			file_record.download_status = 2;
+			file_record.last_downloaded = DateTime.Now;
+		}
+
+		private void ReplaceFile(XmlNode article, ObjectFileRecord file_record)
+        {
+			string full_path = file_record.local_path;
+			// ensure can over write
+			if (File.Exists(full_path))
+			{
+				File.Delete(full_path);
+			}
+			using (XmlWriter writer = XmlWriter.Create(full_path, settings))
+			{
+				article.WriteTo(writer);
+			}
+			file_record.last_downloaded = DateTime.Now;
 		}
 
 	}

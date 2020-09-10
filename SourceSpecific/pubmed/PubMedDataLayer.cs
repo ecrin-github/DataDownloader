@@ -140,7 +140,7 @@ namespace DataDownloader.pubmed
 			using (var conn = new NpgsqlConnection(connString))
 			{
 				string sql_string = @"select distinct pmid 
-						  FROM pp.temp_pmid_collector;";
+						  FROM pp.pmids_by_source_total;";
 				return conn.Query<pmid_holder>(sql_string);
 			}
 		}
@@ -170,8 +170,8 @@ namespace DataDownloader.pubmed
 		{
 			using (var conn = new NpgsqlConnection(connString))
 			{
-				string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmid_by_bank;
-                     CREATE TABLE IF NOT EXISTS pp.temp_pmid_by_bank(
+				string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmids_by_bank;
+                     CREATE TABLE IF NOT EXISTS pp.temp_pmids_by_bank(
                         pmid varchar)";
 				conn.Execute(sql_string);
 			}
@@ -220,8 +220,6 @@ namespace DataDownloader.pubmed
 			}
 		}
 		
-		
-		
 		public void TruncateTempPMIDsByBankTable()
 		{
 			using (var conn = new NpgsqlConnection(connString))
@@ -242,20 +240,27 @@ namespace DataDownloader.pubmed
 		}
 
 
-		public void TransferNewPMIDsToSourceDataTable(int last_saf_id)
+		public void TransferBankPMIDsToTotalTable(string bank_abbrev)
 		{
 			using (var conn = new NpgsqlConnection(mon_connString))
 			{
-				string sql_string = @"INSERT INTO sf.source_data_objects(
-				          source_id, sd_id, remote_url, last_saf_id, download_status) 
-				          SELECT 100135, pmid, 'https://www.ncbi.nlm.nih.gov/pubmed/' || pmid, "
-						  + last_saf_id.ToString() + @", 0
-						  FROM pp.temp_pmid_collector";
+				string sql_string = @"INSERT INTO pp.pmids_by_bank_total(
+				          bank_id, pmid) 
+				          SELECT " + bank_abbrev + @", pmid
+						  FROM pp.temp_pmids_by_bank";
 				conn.Execute(sql_string);
 			}
 		}
 
-
+		public IEnumerable<pmid_holder> FetchDistinctBanksPMIDs()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"select distinct pmid 
+						  FROM pp.pmids_by_bank_total;";
+				return conn.Query<pmid_holder>(sql_string);
+			}
+		}
 
 		public void DropTempPMIDBySourceTable()
 		{
