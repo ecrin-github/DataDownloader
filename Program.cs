@@ -5,19 +5,21 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Threading.Tasks;
+
 
 namespace DataDownloader
 {
 	class Program
 	{
-		static void Main(string[] args)
+		static async Task Main(string[] args)
 		{
-			var result = Parser.Default.ParseArguments<Options>(args)
-			.WithParsed(RunOptions)
-			.WithNotParsed(HandleParseError);
+			var parsedArguments = Parser.Default.ParseArguments<Options>(args);
+			await parsedArguments.WithParsedAsync(opts => RunOptionsAndReturnExitCodeAsync(opts));
+			await parsedArguments.WithNotParsedAsync((errs) => HandleParseErrorAsync(errs));
 		}
 
-		static void RunOptions(Options opts)
+		static async Task<int> RunOptionsAndReturnExitCodeAsync(Options opts)
 		{
 			// Handle options.
 
@@ -30,7 +32,7 @@ namespace DataDownloader
 			if (source == null)
 			{
 				WriteLine("Sorry - the first argument does not correspond to a known source");
-				return;
+				return -1;
 			}
 			args.source_id = source.id;
 
@@ -41,7 +43,7 @@ namespace DataDownloader
 			if (sf_type == null)
 			{
 				WriteLine("Sorry - the type argument does not correspond to a known search / fetch type");
-				return;
+				return -1;
 			}
 			args.type_id = sf_type.id;
 
@@ -68,7 +70,7 @@ namespace DataDownloader
                 {
      				WriteLine("Sorry - this search fetch type requires a date"); ;
 					WriteLine("in the format YYYY-MM-DD and this is missing");
-					return;
+					return -1;
 				}
 			}
 
@@ -82,7 +84,7 @@ namespace DataDownloader
 				{
 					WriteLine("Sorry - this search fetch type requires a file name"); ;
 					WriteLine("and no valid file path and name is supplied");
-					return;
+					return -1;
 				}
 			}
 
@@ -93,7 +95,7 @@ namespace DataDownloader
 				{
 					WriteLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
 					WriteLine("and no valid file path and name is supplied");
-					return;
+					return -1;
 				}
 			}
 
@@ -105,7 +107,7 @@ namespace DataDownloader
 				{
 					WriteLine("Sorry - this search fetch type requires one or more"); ;
 					WriteLine("previous search-fetch ids and none were supplied supplied");
-					return;
+					return -1;
 				}
 			}
 
@@ -114,14 +116,16 @@ namespace DataDownloader
 			args.no_logging = opts.no_logging;
 
 			Downloader dl = new Downloader();
-			dl.RunDownloaderAsync(args, source);
+			await dl.RunDownloaderAsync(args, source);
+			return 0;
 		}
 
-		static void HandleParseError(IEnumerable<Error> errs)
+		static Task HandleParseErrorAsync(IEnumerable<Error> errs)
 		{
-			// handle errors
+			// do nothing for the moment
+			return Task.CompletedTask;
 		}
-		
+
 	}
 
 

@@ -80,31 +80,31 @@ namespace DataDownloader.pubmed
 		public async Task<DownloadResult> ProcessDataAsync()
         {
 			DownloadResult res = null;
-			if (saf_id == 114 && args.filter_id == 10003)
+			if (args.type_id == 114 && args.filter_id == 10003)
 			{
 				// download pmids with references to trial registries, that
 				// have been revised since the cutoff date
 				await CreatePMIDsListfromBanksAsync();
-				res = await DownloadPubmedEntriesUsingBanksAsync();
+				//res = await DownloadPubmedEntriesUsingBanksAsync();
 			}
-			if (saf_id == 114 && args.filter_id == 10004)
+			if (args.type_id == 114 && args.filter_id == 10004)
 			{
 				// download pmids listed as references in other sources,
 				// that have been revised since the cutoff date
 				CreatePMIDsListfromSources();
-				res = await DownloadPubmedEntriesUsingSourcesAsync();
+				//res = await DownloadPubmedEntriesUsingSourcesAsync();
 			}
-			if (saf_id == 121 && args.filter_id == 10003)
+			if (args.type_id == 121 && args.filter_id == 10003)
 			{
 				// download all pmids with references to trial registries
 				await CreatePMIDsListfromBanksAsync();
-				res = await DownloadPubmedEntriesUsingBanksAsync();
+				//res = await DownloadPubmedEntriesUsingBanksAsync();
 			}
-			if (saf_id == 121 && args.filter_id == 10004)
+			if (args.type_id == 121 && args.filter_id == 10004)
 			{
 				// download all pmids listed as references in other sources
 				CreatePMIDsListfromSources();
-				res = await DownloadPubmedEntriesUsingSourcesAsync();
+				//res = await DownloadPubmedEntriesUsingSourcesAsync();
 			}
 			return res;
 		}
@@ -115,8 +115,9 @@ namespace DataDownloader.pubmed
 
 			pubmed_repo.SetUpTempPMIDsBySourceTable();
 			pubmed_repo.SetUpSourcePMIDsTable();
+			pubmed_repo.SetUpDistinctSourcePMIDsTable();
 			CopyHelpers helper = new CopyHelpers();
-			IEnumerable<pmid_holder> references;
+			IEnumerable<PMIDBySource> references;
 
 			// Loop threough the study databases that hold
 			// study_reference tables, i.e. with pmid ids
@@ -124,41 +125,36 @@ namespace DataDownloader.pubmed
 			foreach (Source s in sources)
             {
 				pubmed_repo.TruncateTempPMIDsBySourceTable();
-				references = pubmed_repo.FetchReferences(s.database_name);
-				pubmed_repo.StorePmidsBySource(helper.pubmed_ids_helper, references);
+				references = pubmed_repo.FetchSourceReferences(s.database_name);
+				pubmed_repo.StorePmidsBySource(helper.source_ids_helper, references);
 				pubmed_repo.TransferSourcePMIDsToTotalTable(s.id);
 			}
 
 			pubmed_repo.DropTempPMIDBySourceTable();
+			pubmed_repo.FillDistinctSourcePMIDsTable();
 		}
+
 
 		public async Task<DownloadResult> DownloadPubmedEntriesUsingSourcesAsync()
         {
 			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?";
 			baseURL += "tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
-			
+
 			// get list of relevant PMIDs into memory
-			IEnumerable<pmid_holder> references;
-			references = pubmed_repo.FetchDistinctSourcesPMIDs();
+			IEnumerable<string> idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
 			DownloadResult res = new DownloadResult();
-			bool ignore_revision_date = (saf_id == 121) ? true : false;
+			bool ignore_revision_date = (args.type_id == 121) ? true : false;
 
 			try
 			{
-				// loop through 10 at a time
-				for (int i = 0; i < references.Count(); i += 10)
+				// loop through the references - alerady in groups of 10 
+				// from processing in the database call
+				foreach (string idstring in idstrings)
 				{
-					// if (i > 50) break; // when testing...
-					// Uses the string_agg function in Postgres to return the 10 Ids 
-					// being retrieved as a comma delimited string.
-
-					string idString = pubmed_repo.FetchIdString(i);
-					if (idString == null || idString == "") break;
-
 					// Construct the fetch URL using the 10 Ids and
 					// retrieve the articles as nodes
 
-					string url = baseURL + idString + "&retmode=xml";
+					string url = baseURL + idstring + "&retmode=xml";
 					XmlDocument xdoc = new XmlDocument();
 					string responseBody = await webClient.GetStringAsync(url);
 					xdoc.LoadXml(responseBody);
@@ -174,7 +170,7 @@ namespace DataDownloader.pubmed
 							// get current or new file download record, calculate
 							// and store last revised date. Write new or replace
 							// file and update file_record (by ref).
-
+							res.num_checked++;
 							ObjectFileRecord file_record = GetObjectRecord(pmid);
 							file_record.last_revised = GetDateLastRevised(article);
 							if (file_record.download_status == 0)
@@ -196,13 +192,15 @@ namespace DataDownloader.pubmed
 							}
 							file_record.last_saf_id = saf_id;
 							logging_repo.StoreObjectFileRec(file_record);
-						}
+
+							if (res.num_checked % 100 == 0) Console.WriteLine(res.num_checked.ToString());
+      					}
 					}
 
 					System.Threading.Thread.Sleep(1200);
-					Console.WriteLine(i.ToString());
 				}
 
+				//if (res.num_checked > 500) break;  // testing only
 				return res;
 			}
 
@@ -214,6 +212,7 @@ namespace DataDownloader.pubmed
 			}
         }
 
+
 		public async Task CreatePMIDsListfromBanksAsync()
 		{
 			int totalRecords, numCallsNeeded, bank_id;
@@ -221,10 +220,11 @@ namespace DataDownloader.pubmed
 			string search_term;
 			CopyHelpers helper = new CopyHelpers();
 			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
-			bool include_dates = (saf_id == 114) ? true : false;
+			bool include_dates = (args.type_id == 114) ? true : false;
 
 			pubmed_repo.SetUpTempPMIDsByBankTable();
 			pubmed_repo.SetUpBankPMIDsTable();
+			pubmed_repo.SetUpDistinctBankPMIDsTable();
 
 			// Get list of potential linked data banks (includes trial registries)
 			IEnumerable<PMSource> banks = pubmed_repo.FetchDatabanks();
@@ -246,7 +246,7 @@ namespace DataDownloader.pubmed
 
 				// Get the number of total records that have this databank reference
 				// and calculate the loop parameters
-				totalRecords = await pubmed_repo.GetDataCountAsync(url);
+				totalRecords = await pubmed_repo.GetBankDataCountAsync(url);
 				numCallsNeeded = (int)(totalRecords / retmax) + 1;
 				pubmed_repo.TruncateTempPMIDsByBankTable();
 
@@ -273,14 +273,8 @@ namespace DataDownloader.pubmed
 							eSearchResult result = (eSearchResult)xSerializer.Deserialize(reader);
 							if (result != null)
 							{
-								List<FoundResult> FoundIds = new List<FoundResult>();
-								foreach (int id in result.IdList)
-								{
-									FoundIds.Add(new FoundResult(id, bank_id));
-								}
-
-								// Store this group of Ids, and record this on the console.
-								pubmed_repo.StorePMIDsByBank(helper.found_result_copyhelper, FoundIds);
+								var FoundIds = Array.ConvertAll(result.IdList, ele => new PMIDByBank(ele.ToString()));
+								pubmed_repo.StorePMIDsByBank(helper.bank_ids_helper, FoundIds);
 
 								Console.WriteLine("Storing {0} records from {1} in bank {2}", retmax, start, search_term);
 							}
@@ -297,35 +291,28 @@ namespace DataDownloader.pubmed
 
 				// transfer across to total table...
 				pubmed_repo.TransferBankPMIDsToTotalTable(s.nlm_abbrev);
-
 			}
+
+			pubmed_repo.DropTempPMIDByBankTable();
+			pubmed_repo.FillDistinctBankPMIDsTable();
 		}
+
 
 		public async Task<DownloadResult> DownloadPubmedEntriesUsingBanksAsync()
 		{
 			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?";
 			baseURL += "tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
 
-			// get list of relevant PMIDs into memory
-			IEnumerable<pmid_holder> references;
-			references = pubmed_repo.FetchDistinctBanksPMIDs();
+			// get list of relevant PMID ids into memory
+			IEnumerable<string> idStrings = pubmed_repo.FetchDistinctBankPMIDStrings();
 			DownloadResult res = new DownloadResult();
 
-			try
+			foreach (string idString in idStrings)
 			{
-				// Fetch the result set, loop through 10 at a time
-				for (int i = 0; i < references.Count(); i += 10)
+				try
 				{
-					// if (i > 50) break; // when testing...
-
-					// Uses the string_agg function in Postgres to return the 10 Ids 
-					// being retrieved as a comma delimited string.
-
-					string idString = pubmed_repo.FetchIdString(i);
-					if (idString == null || idString == "") break;
-
-					// Construct the fetch URL using the 10 Ids and
-					// retrieve the articles as nodes
+					// Construct the fetch URL using the 10 Ids in
+					// idString and retrieve the articles as nodes
 
 					string url = baseURL + idString + "&retmode=xml";
 					XmlDocument xdoc = new XmlDocument();
@@ -366,18 +353,17 @@ namespace DataDownloader.pubmed
 					}
 
 					System.Threading.Thread.Sleep(1200);
-					Console.WriteLine(i.ToString());
 				}
 
-				return res;
+			    catch (HttpRequestException e)
+				{
+					Console.WriteLine("\nException Caught!");
+					Console.WriteLine("Message :{0} ", e.Message);
+					return res;
+				}
 			}
-
-			catch (HttpRequestException e)
-			{
-				Console.WriteLine("\nException Caught!");
-				Console.WriteLine("Message :{0} ", e.Message);
-				return res;
-			}
+			
+			return res;
 		}
 
 

@@ -10,6 +10,7 @@ using DataDownloader.who;
 using DataDownloader.vivli;
 using DataDownloader.pubmed;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DataDownloader
 {
@@ -28,7 +29,7 @@ namespace DataDownloader
 			browser.Encoding = Encoding.UTF8;
 		}
 
-		public async void RunDownloaderAsync(Args args, Source source)
+		public async Task RunDownloaderAsync(Args args, Source source)
 		{
     		// Identify source type and location, destination folder
 
