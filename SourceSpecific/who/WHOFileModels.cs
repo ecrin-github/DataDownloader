@@ -197,7 +197,7 @@ namespace DataDownloader.who
 		public List<StudyCondition> condition_list { get; set; }
 	}
 
-	[Table("sf.secondary_ids")]
+	//[Table("sf.secondary_ids")]
 	public class Secondary_Id
 	{
 		public string source_field { get; set; }
@@ -222,7 +222,7 @@ namespace DataDownloader.who
 		{ }
 	}
 
-	[Table("sf.study_features")]
+	//[Table("sf.study_features")]
 	public class StudyFeature
 	{
 		public int ftype_id { get; set; }
@@ -243,7 +243,7 @@ namespace DataDownloader.who
 		{ }
 	}
 
-	[Table("sf.study_conditions")]
+	//[Table("sf.study_conditions")]
 	public class StudyCondition
 	{
 		public string condition { get; set; }

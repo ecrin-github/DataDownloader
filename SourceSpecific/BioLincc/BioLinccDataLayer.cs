@@ -36,14 +36,6 @@ namespace DataDownloader.biolincc
 			builder.SearchPath = "pp";
 			_biolincc_pp_connString = builder.ConnectionString;
 
-			// example appsettings.json file...
-			// the only values required are for...
-			// {
-			//	  "host": "host_name...",
-			//	  "user": "user_name...",
-			//    "password": "user_password...",
-			//	  "folder_base": "C:\\MDR JSON\\Object JSON... "
-			// }
 		}
 
 

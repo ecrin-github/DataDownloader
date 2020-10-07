@@ -16,260 +16,121 @@ namespace DataDownloader.euctr
 {
     public class EUCTR_Processor
     {
-       public void GetStudyInitialDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo, 
-                                           int pagenum, string file_base, int source_id, int last_saf_id, bool incomplete_only)
+        public int GetListLength(WebPage homePage)
         {
-            int n = (pagenum - 1) * 20;
+            // gets the numbers of records found for the current search
+            var total_link = homePage.Find("a", By.Id("ui-id-1")).FirstOrDefault();
+            string results = TrimmedContents(total_link);
+            int left_bracket_pos = results.IndexOf("(");
+            int right_bracket_pos = results.IndexOf(")");
+            string results_value = results.Substring(left_bracket_pos + 1, right_bracket_pos - left_bracket_pos - 1);
+            results_value = results_value.Replace(",", "");
+            if (Int32.TryParse(results_value, out int result_count))
+            {
+                return result_count;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        public List<EUCTR_Summmary> GetStudySuummaries(WebPage homePage)
+        {
+            List<EUCTR_Summmary> summaries = new List<EUCTR_Summmary>();
+            
             var pageContent = homePage.Find("div", By.Class("results"));
             HtmlNode[] studyBoxes = pageContent.CssSelect(".result").ToArray();
-            XmlSerializer writer = new XmlSerializer(typeof(EUCTR_Record));
-
             foreach (HtmlNode box in studyBoxes)
             {
-                n++;
-
                 // Ids and start date - three td elements in a fixed order in first row.
                 HtmlNode[] studyDetails = box.Elements("tr").ToArray();
                 HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
+
                 string euctr_id = InnerValue(idDetails[0]);
-
-                // Now the euctr_id (sd_id) is known get file record - check OK to proceed...
-
-                StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(euctr_id, source_id);
-                if (file_record?.last_saf_id == last_saf_id) continue;  // already been done - used when skipping after errors...
-
-                // If 'incomplete_only' has been signalled ignore 'assumed complete' files.
-
-                if (incomplete_only && file_record.assume_complete == true) continue; 
-                
-                // Instantiate record.
-
                 string sponsor_id = InnerValue(idDetails[1]);
                 string start_date = InnerValue(idDetails[2]);
-                EUCTR_Record st = new EUCTR_Record(n, euctr_id, sponsor_id, start_date);
+
+                EUCTR_Summmary summary = new EUCTR_Summmary(euctr_id, sponsor_id, start_date);
 
                 // Get other details in the box on the search page.
 
-                st = ExtractSingleRecord(st, box, studyDetails, browser);
-
-                // Get details from the protocol details page.
-
-                WebPage detailsPage = null;
-                detailsPage = browser.NavigateToPage(new Uri(st.details_url));
-                if (detailsPage != null)
+                // sponsor name in second row - also extracted later from the details page
+                summary.sponsor_name = InnerValue(studyDetails[1]);
+                if (summary.sponsor_name.Contains("[...]"))
                 {
-                    st = ExtractProtocolDetails(st, detailsPage);
+                    summary.sponsor_name = summary.sponsor_name.Replace("[...]", "");
                 }
 
-                // Get results details
+                // medical conditiona as a text description
+                summary.medical_condition = InnerValue(studyDetails[3]);
 
-                if (st.results_url != null)
+                // Disease (MedDRA details) - five td elements in a fixed order, 
+                // if they are there at all appear in a nested table, class = 'meddra'.
+
+                List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
+                HtmlNode meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
+                if (meddraTable != null)
                 {
-                    System.Threading.Thread.Sleep(1000);
-                    WebPage resultsPage = browser.NavigateToPage(new Uri(st.results_url));
-
-                    if (resultsPage != null)
+                    // this table has at 2 least rows, the first with the headers (so row 0 can be ignored)
+                    HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
+                    for (int k = 1; k < disDetails.Count(); k++)
                     {
-                        st = ExtractResultDetails(st, resultsPage);
+                        MeddraTerm stm = new MeddraTerm();
+                        HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
+                        stm.version = meddraDetails[0].InnerText?.Trim() ?? "";
+                        stm.soc_term = meddraDetails[1].InnerText?.Trim() ?? "";
+                        stm.code = meddraDetails[2].InnerText?.Trim() ?? "";
+                        stm.term = meddraDetails[3].InnerText?.Trim() ?? "";
+                        stm.level = meddraDetails[4].InnerText?.Trim() ?? "";
+                        meddra_terms.Add(stm);
                     }
+
+                    summary.meddra_terms = meddra_terms;
                 }
 
-                // Write out study record as XML.
+                // population age and gender - 2 td elements in a fixed order
+                HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
+                summary.population_age = InnerValue(popDetails[0]);
+                summary.gender = InnerValue(popDetails[1]);
 
-                string file_name = "EU " + st.eudract_id + ".xml";
-                string full_path = Path.Combine(file_base, file_name);
-                CreateFile(writer, st, full_path);
+                // Protocol links 
+                // These are often multiple but - for the time being at least
+                // we take the first and use that to obtain further details
+                HtmlNode link = studyDetails[6].CssSelect("a").FirstOrDefault();
+                summary.details_url = "https://www.clinicaltrialsregister.eu" + link.Attributes["href"].Value;
 
-                // Update file record in the mon database.
-
-                if (file_record == null)
+                HtmlNode status_node = studyDetails[6].CssSelect("span.status").FirstOrDefault();
+                if (status_node != null)
                 {
-                    // new record
-                    bool? assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
-                    file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, last_saf_id, assume_complete, full_path);
-                    logging_repo.InsertStudyFileRec(file_record);
-                }
-                else
-                {
-                    // update record
-                    file_record.remote_url = st.details_url;
-                    file_record.last_saf_id = last_saf_id;
-                    file_record.assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
-                    file_record.download_status = 2;
-                    file_record.last_downloaded = DateTime.Now;
-                    file_record.local_path = full_path;
-                    logging_repo.StoreStudyFileRec(file_record);
-                }
-
-                System.Threading.Thread.Sleep(1500);
-            }
-        }
-
-
-
-        public void GetSingleStudyDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo,
-                                          string file_base, int source_id, int last_saf_id)
-        {
-            // This used when examining only a single study
-
-            var pageContent = homePage.Find("div", By.Class("results"));
-            HtmlNode[] studyBoxes = pageContent.CssSelect(".result").ToArray();
-            XmlSerializer writer = new XmlSerializer(typeof(EUCTR_Record));
-
-            foreach (HtmlNode box in studyBoxes)
-            {
-                int n = -1;
-                // Ids and start date - three td elements in a fixed order in first row.
-                HtmlNode[] studyDetails = box.Elements("tr").ToArray();
-                HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
-                string euctr_id = InnerValue(idDetails[0]);
-
-                // Now the euctr_id (sd_id) is known get file record - check OK to proceed...
-
-                StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(euctr_id, source_id);
-                if (file_record?.last_saf_id == last_saf_id) continue;  // already been done
-
-                // Instantiate record.
-
-                string sponsor_id = InnerValue(idDetails[1]);
-                string start_date = InnerValue(idDetails[2]);
-                EUCTR_Record st = new EUCTR_Record(n, euctr_id, sponsor_id, start_date);
-
-                // Get other details in the box on the search page.
-
-                st = ExtractSingleRecord(st, box, studyDetails, browser);
-
-                // Get details from the protocol details page.
-
-                WebPage detailsPage = null;
-                detailsPage = browser.NavigateToPage(new Uri(st.details_url));
-                if (detailsPage != null)
-                {
-                    st = ExtractProtocolDetails(st, detailsPage);
-                }
-
-                // Get results details
-                if (st.results_url != null)
-                {
-                    System.Threading.Thread.Sleep(1000);
-                    WebPage resultsPage = browser.NavigateToPage(new Uri(st.results_url));
-
-                    if (resultsPage != null)
+                    string status = status_node.InnerText ?? "";
+                    // remove surrounding brackets
+                    if (status != "" && status.StartsWith("(") && status.Length > 2)
                     {
-                        st = ExtractResultDetails(st, resultsPage);
+                        status = status.Substring(1, status.Length - 2);
                     }
+                    summary.trial_status = status;
                 }
 
-                // Write out study record as XML.
-
-                string file_name = "EU " + st.eudract_id + ".xml";
-                string full_path = Path.Combine(file_base, file_name);
-                CreateFile(writer, st, full_path);
-
-                // Update file record in the mon database.
-
-                if (file_record == null)
+                // Results link, if any
+                HtmlNode resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
+                if (resultLink != null)
                 {
-                    // new record
-                    bool? assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
-                    file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, last_saf_id, assume_complete, full_path);
-                    logging_repo.InsertStudyFileRec(file_record);
-                }
-                else
-                {
-                    // update record
-                    file_record.remote_url = st.details_url;
-                    file_record.last_saf_id = last_saf_id;
-                    file_record.assume_complete = (st.trial_status == "Completed" && st.results_url != null) ? (bool?)true : null;
-                    file_record.download_status = 2;
-                    file_record.last_downloaded = DateTime.Now;
-                    file_record.local_path = full_path;
-                    logging_repo.StoreStudyFileRec(file_record);
+                    summary.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
+
+                    // if results link present and Status not completed make status "Completed"
+                    // (some entries may not have been updated)
+                    if (summary.trial_status != "Completed") summary.trial_status = "Completed";
                 }
 
-                System.Threading.Thread.Sleep(1500);
-            }
-        }
-        
-        
-        private EUCTR_Record ExtractSingleRecord(EUCTR_Record st, HtmlNode box, HtmlNode[] studyDetails, ScrapingBrowser browser)
-        {
-
-            // sponsor name in second row - also extracted later from the details page
-            st.sponsor_name = InnerValue(studyDetails[1]);
-            if (st.sponsor_name.Contains("[...]"))
-            {
-                st.sponsor_name = st.sponsor_name.Replace("[...]", "");
+                summaries.Add(summary);
             }
 
-            // title in third row - get later from the details page
-
-            // medical conditiona as a text description
-            st.medical_condition = InnerValue(studyDetails[3]);
-
-            // Disease (MedDRA details) - five td elements in a fixed order, 
-            // if they are there at all appear in a nested table, class = 'meddra'.
-
-            List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
-            HtmlNode meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
-            if (meddraTable != null)
-            {
-                // this table has at 2 least rows, the first with the headers (so row 0 can be ignored)
-                HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
-                for (int k = 1; k < disDetails.Count(); k++)
-                {
-                    MeddraTerm stm = new MeddraTerm();
-                    HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
-                    stm.version = meddraDetails[0].InnerText?.Trim() ?? "";
-                    stm.soc_term = meddraDetails[1].InnerText?.Trim() ?? "";
-                    stm.code = meddraDetails[2].InnerText?.Trim() ?? "";
-                    stm.term = meddraDetails[3].InnerText?.Trim() ?? "";
-                    stm.level = meddraDetails[4].InnerText?.Trim() ?? "";
-                    meddra_terms.Add(stm);
-                }
-
-                st.meddra_terms = meddra_terms;
-            }
-
-            // population age and gender - 2 td elements in a fixed order
-            HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
-            st.population_age = InnerValue(popDetails[0]);
-            st.gender = InnerValue(popDetails[1]);
-
-            // Protocol links 
-            // These are often multiple but - for the time being at least
-            // we take the first and use that to obtain further details
-            HtmlNode link = studyDetails[6].CssSelect("a").FirstOrDefault();
-            HtmlNode status_node = studyDetails[6].CssSelect("span.status").FirstOrDefault();
-
-            st.details_url = "https://www.clinicaltrialsregister.eu" + link.Attributes["href"].Value;
-            if (status_node != null)
-            {
-                string status = status_node.InnerText ?? "";
-                // remove surrounding brackets
-                if (status != "" && status.StartsWith("(") && status.Length > 2)
-                {
-                    status = status.Substring(1, status.Length - 2);
-                }
-                st.trial_status = status;
-            }
-
-            // Results link, if any
-            HtmlNode resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
-            if (resultLink != null)
-            {
-                st.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
-
-                // if results link present and Status not completed make status "Completed"
-                // (some entries may not have been updated)
-                if (st.trial_status != "Completed") st.trial_status = "Completed";
-            }
-
-            return st;
+            return summaries;       
         }
 
-
-        private EUCTR_Record ExtractProtocolDetails(EUCTR_Record st, WebPage detailsPage)
+  
+        public EUCTR_Record ExtractProtocolDetails(EUCTR_Record st, WebPage detailsPage)
         {
             var summary = detailsPage.Find("table", By.Class("summary")).FirstOrDefault();
 
@@ -316,19 +177,67 @@ namespace DataDownloader.euctr
             var details_rows = study_details.CssSelect("tbody tr").ToArray();
             if (details_rows != null)
             {
-                st.features = GetStudyFeatures(identifier_rows);
+                st.features = GetStudyFeatures(details_rows);
             }
 
             var population = detailsPage.Find("table", By.Id("section-f")).FirstOrDefault();
             var population_rows = population.CssSelect("tbody tr").ToArray();
             if (population_rows != null)
             {
-                st.population = GetStudyPopulation(identifier_rows);
+                st.population = GetStudyPopulation(population_rows);
             }
 
             return st;
         }
-        
+
+
+        public EUCTR_Record ExtractResultDetails(EUCTR_Record st, WebPage resultsPage)
+        {
+
+            var pdfLInk = resultsPage.Find("a", By.Id("downloadResultPdf")).FirstOrDefault();
+
+            if (pdfLInk != null)
+            {
+                st.results_pdf_link = pdfLInk.Attributes["href"].Value;
+            }
+
+            var result_div = resultsPage.Find("div", By.Id("resultContent")).FirstOrDefault();
+
+            if (result_div != null)
+            {
+                var result_rows = result_div.SelectNodes("table[1]/tr")?.ToArray();
+                if (result_rows != null)
+                {
+                    for (int i = 0; i < result_rows.Length; i++)
+                    {
+                        var first_cell = result_rows[i].SelectSingleNode("td[1]");
+                        string first_cell_content = TrimmedContents(first_cell);
+
+                        if (first_cell_content == "Results version number")
+                        {
+                            st.results_version = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]"));
+                        }
+                        else if (first_cell_content == "This version publication date")
+                        {
+                            st.results_revision_date = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]"));
+                        }
+                        else if (first_cell_content == "First version publication date")
+                        {
+                            st.results_first_date = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]"));
+                        }
+                        else if (first_cell_content == "Summary report(s)")
+                        {
+                            st.results_summary_link = first_cell.SelectSingleNode("following-sibling::td[1]/a[1]").Attributes["href"].Value;
+                            st.results_summary_name = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]/a[1]"));
+                        }
+                    }
+                }
+
+            }
+
+            return st;
+        }
+
 
         private List<DetailLine> GetStudyIdentifiers(HtmlNode[] identifier_rows)
         {
@@ -644,65 +553,6 @@ namespace DataDownloader.euctr
         }
 
 
-        private EUCTR_Record ExtractResultDetails(EUCTR_Record st, WebPage resultsPage)
-        {
-
-            var pdfLInk = resultsPage.Find("a", By.Id("downloadResultPdf")).FirstOrDefault();
-
-            if (pdfLInk != null)
-            {
-                st.results_pdf_link = pdfLInk.Attributes["href"].Value;
-            }
-
-            var result_div = resultsPage.Find("div", By.Id("resultContent")).FirstOrDefault();
-
-            if (result_div != null)
-            {
-                var result_rows = result_div.SelectNodes("table[1]/tr")?.ToArray();
-                if (result_rows != null)
-                {
-                    for (int i = 0; i<result_rows.Length;  i++)
-                        {
-                        var first_cell = result_rows[i].SelectSingleNode("td[1]");
-                        string first_cell_content = TrimmedContents(first_cell);
-
-                        if (first_cell_content == "Results version number")
-                        {
-                            st.results_version = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]"));
-                        }
-                        else    if (first_cell_content == "This version publication date")
-                        {
-                            st.results_revision_date = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]"));
-                        }
-                        else  if (first_cell_content == "First version publication date")
-                        {
-                            st.results_first_date = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]"));
-                        }
-                        else  if (first_cell_content == "Summary report(s)")
-                        {
-                            st.results_summary_link = first_cell.SelectSingleNode("following-sibling::td[1]/a[1]").Attributes["href"].Value;
-                            st.results_summary_name = TrimmedContents(first_cell.SelectSingleNode("following-sibling::td[1]/a[1]"));
-                        }
-                    }
-                }
-
-            }
-
-            return st;
-        }
-
-
-        private void CreateFile(XmlSerializer writer, EUCTR_Record st, string full_path)
-        {
-            if (File.Exists(full_path))
-            {
-                File.Delete(full_path);
-            }
-            FileStream file = System.IO.File.Create(full_path);
-            writer.Serialize(file, st);
-            file.Close();
-        }
-
 
         private string InnerValue(HtmlNode node)
         {
@@ -711,12 +561,10 @@ namespace DataDownloader.euctr
             return allInner.Substring(label.Length)?.Trim() ?? "";
         }
 
-
         private string TrimmedContents(HtmlNode node)
-         {
+        {
             return node.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
         }
-
 
         private string TrimmedLabel(HtmlNode node)
         {

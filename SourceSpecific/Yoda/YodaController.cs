@@ -39,7 +39,7 @@ namespace DataDownloader.yoda
 		{
 			// Although the args parameter is passed in for consistency it is not used.
 			// For Yoda, all data is downloaded each time during a download, as it takes a relatively short time
-			// and the files simply replaced or - if new - added to the folder. There is therrefore not a concept of an
+			// and the files simply replaced or - if new - added to the folder. There is therefore not a concept of an
 			// update or focused download, as opposed to a full download.
 
 			// set up initial study list.
@@ -47,13 +47,13 @@ namespace DataDownloader.yoda
 			List<Summary> all_study_list = new List<Summary>();
 			string baseURL = "https://yoda.yale.edu/trials-search?amp%3Bpage=0&field_clintrials_gov_nct_number_title=&page=";
 			//for (int i = 0; i < 4; i++)
-			for (int i = 0; i < 42; i++)
+			for (int i = 0; i < 41; i++)
 			{
 				WebPage homePage = browser.NavigateToPage(new Uri(baseURL + i.ToString()));
 				List<Summary> page_study_list = processor.GetStudyInitialDetails(homePage, i);
 				all_study_list.AddRange(page_study_list);
 
-				Console.WriteLine(i.ToString());
+				StringHelpers.SendFeedback(i.ToString());
 				System.Threading.Thread.Sleep(300);
 			}
 
@@ -91,7 +91,7 @@ namespace DataDownloader.yoda
 					System.Threading.Thread.Sleep(500);
 				}
 
-				Console.WriteLine(res.num_checked.ToString());
+				StringHelpers.SendFeedback(res.num_checked.ToString());
      		}
 
 			return res;

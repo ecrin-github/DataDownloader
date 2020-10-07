@@ -1,86 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using HtmlAgilityPack;
-using ScrapySharp.Extensions;
-using ScrapySharp.Network;
+﻿using HtmlAgilityPack;
 using ScrapySharp.Html;
-using System.IO;
-using System.Web;
+using ScrapySharp.Network;
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Web;
 
 namespace DataDownloader.isrctn
 {
     public class ISRCTN_Processor
     {
 
-        public void GetStudyDetails(ScrapingBrowser browser, WebPage homePage, LoggingDataLayer logging_repo, 
-                                    int pagenum, string file_base, int saf_id)
+        public int GetListLength(WebPage homePage)
         {
-
-            // gets the details of each trial registry record
-            // listed on the search page (n=100)
-
-            int n = (pagenum - 1) * 100;
-            var pageContent = homePage.Find("ul", By.Class("ResultsList"));
-            HtmlNode[] studyRows = pageContent.CssSelect("li article").ToArray();
-
-            List<StudyFileRecord> file_records = new List<StudyFileRecord>();
-            string ISRCTNNumber, remote_link;
-            int colonPos;
-
-            foreach (HtmlNode row in studyRows)
+            // gets the numbers of records found for the current search
+            var resultsHeader = homePage.Find("h1", By.Class("Results_title")).FirstOrDefault();
+            string results_string = InnerContent(resultsHeader);
+            string results_num = results_string.Substring(0, results_string.IndexOf("results")).Trim();
+            if (Int32.TryParse(results_num, out int result_count))
             {
-                n++;
-                if (n % 10 == 0) System.Threading.Thread.Sleep(2000);  // pause every 10 accesses
-
-                ISCTRN_Record st = new ISCTRN_Record();
-                st.id = n;
-
-                HtmlNode main = row.CssSelect(".ResultsList_item_main").FirstOrDefault();
-                HtmlNode title = main.CssSelect(".ResultsList_item_title a").FirstOrDefault();
-                if (title != null)
-                {
-                    string titleString = title.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
-                    if (titleString.Contains(":"))
-                    {
-                        colonPos = titleString.IndexOf(":");
-                        ISRCTNNumber = titleString.Substring(0, colonPos - 1).Trim();
-                        st.isctrn_id = ISRCTNNumber;
-                        remote_link = "https://www.isrctn.com/" + ISRCTNNumber;
-                        WebPage detailsPage = browser.NavigateToPage(new Uri(remote_link));
-                        GetFullDetails(ref st, detailsPage, logging_repo, pagenum, file_base);
-
-                        // study object should now have properties adde to it
-                        // Write out study record as XML
-
-                        string file_name = st.isctrn_id + ".xml";
-                        string full_path = Path.Combine(file_base, file_name);
-                        System.Xml.Serialization.XmlSerializer writer = new System.Xml.Serialization.XmlSerializer(typeof(ISCTRN_Record));
-                        FileStream file = System.IO.File.Create(full_path);
-                        writer.Serialize(file, st);
-                        file.Close();
-
-                        // create new file record 
-                        file_records.Add(new StudyFileRecord(100126, st.isctrn_id, remote_link, saf_id, st.last_edited, full_path));
-                    }
-                }
+                return result_count;
             }
-
-            // store file records for the group, usually 100, from this page
-            logging_repo.StoreStudyRecs(LoggingCopyHelper.file_record_copyhelper, file_records);
-
-            //repo.StoreDatasetProperties(CopyHelpers.dataset_properties_helper,
-                                       //  s.dataset_properties);
+            else
+            {
+                return 0;
+            }
         }
 
-
-        public void GetFullDetails(ref ISCTRN_Record st, WebPage detailsPage, LoggingDataLayer logging_repo,
-                                    int pagenum, string file_base)
+        public ISCTRN_Record GetFullDetails(WebPage detailsPage, string ISRCTNNumber)
         {
+            ISCTRN_Record st = new ISCTRN_Record();
+            st.isctrn_id = ISRCTNNumber;
 
             var titles = detailsPage.Find("header", By.Class("ComplexTitle")).FirstOrDefault();
             st.doi = InnerContent(titles.SelectSingleNode("div[1]/span[2]"));
@@ -372,7 +323,7 @@ namespace DataDownloader.isrctn
             st.publications = study_publications;
             st.additional_files = study_additional_files;
             st.notes = study_notes;
-
+            return st;
         }
 
         public string InnerContent(HtmlNode node)

@@ -85,7 +85,7 @@ namespace DataDownloader.pubmed
 				// download pmids with references to trial registries, that
 				// have been revised since the cutoff date
 				await CreatePMIDsListfromBanksAsync();
-				//res = await DownloadPubmedEntriesUsingBanksAsync();
+				res = await DownloadPubmedEntriesUsingBanksAsync();
 			}
 			if (args.type_id == 114 && args.filter_id == 10004)
 			{
@@ -98,13 +98,13 @@ namespace DataDownloader.pubmed
 			{
 				// download all pmids with references to trial registries
 				await CreatePMIDsListfromBanksAsync();
-				//res = await DownloadPubmedEntriesUsingBanksAsync();
+				res = await DownloadPubmedEntriesUsingBanksAsync();
 			}
 			if (args.type_id == 121 && args.filter_id == 10004)
 			{
 				// download all pmids listed as references in other sources
 				CreatePMIDsListfromSources();
-				//res = await DownloadPubmedEntriesUsingSourcesAsync();
+				res = await DownloadPubmedEntriesUsingSourcesAsync();
 			}
 			return res;
 		}
@@ -130,8 +130,8 @@ namespace DataDownloader.pubmed
 				pubmed_repo.TransferSourcePMIDsToTotalTable(s.id);
 			}
 
-			pubmed_repo.DropTempPMIDBySourceTable();
 			pubmed_repo.FillDistinctSourcePMIDsTable();
+			pubmed_repo.DropTempPMIDBySourceTable();
 		}
 
 
@@ -193,7 +193,7 @@ namespace DataDownloader.pubmed
 							file_record.last_saf_id = saf_id;
 							logging_repo.StoreObjectFileRec(file_record);
 
-							if (res.num_checked % 100 == 0) Console.WriteLine(res.num_checked.ToString());
+							if (res.num_checked % 100 == 0) StringHelpers.SendFeedback(res.num_checked.ToString());
       					}
 					}
 
@@ -206,8 +206,7 @@ namespace DataDownloader.pubmed
 
 			catch (HttpRequestException e)
 			{
-				Console.WriteLine("\nException Caught!");
-				Console.WriteLine("Message :{0} ", e.Message);
+				StringHelpers.SendError("In PubMed DownloadPubmedEntriesUsingSourcesAsync(): " + e.Message);
 				return res;
 			}
         }
@@ -276,16 +275,16 @@ namespace DataDownloader.pubmed
 								var FoundIds = Array.ConvertAll(result.IdList, ele => new PMIDByBank(ele.ToString()));
 								pubmed_repo.StorePMIDsByBank(helper.bank_ids_helper, FoundIds);
 
-								Console.WriteLine("Storing {0} records from {1} in bank {2}", retmax, start, search_term);
+								string feedback = "Storing " + retmax.ToString() +
+												  " records from " + start.ToString() + " in bank "+ search_term;
+								StringHelpers.SendFeedback(feedback);
 							}
 						}
 					}
 
 					catch (HttpRequestException e)
 					{
-						Console.WriteLine("\nException Caught!");
-						Console.WriteLine("Message :{0} ", e.Message);
-
+						StringHelpers.SendError("In PubMed CreatePMIDsListfromBanksAsync(): " + e.Message);
 					}
 				}
 
@@ -357,8 +356,7 @@ namespace DataDownloader.pubmed
 
 			    catch (HttpRequestException e)
 				{
-					Console.WriteLine("\nException Caught!");
-					Console.WriteLine("Message :{0} ", e.Message);
+					StringHelpers.SendError("In Pubmed DownloadPubmedEntriesUsingBanksAsync" + e.Message);
 					return res;
 				}
 			}

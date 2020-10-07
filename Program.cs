@@ -1,6 +1,5 @@
 ﻿using System;
 using CommandLine;
-using static System.Console;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,7 +30,7 @@ namespace DataDownloader
 			Source source = logging_repo.FetchSourceParameters(opts.source_id);
 			if (source == null)
 			{
-				WriteLine("Sorry - the first argument does not correspond to a known source");
+				StringHelpers.SendFeedback("Sorry - the first argument does not correspond to a known source");
 				return -1;
 			}
 			args.source_id = source.id;
@@ -42,7 +41,7 @@ namespace DataDownloader
 			SFType sf_type = logging_repo.FetchTypeParameters(opts.search_fetch_type_id);
 			if (sf_type == null)
 			{
-				WriteLine("Sorry - the type argument does not correspond to a known search / fetch type");
+				StringHelpers.SendFeedback("Sorry - the type argument does not correspond to a known search / fetch type");
 				return -1;
 			}
 			args.type_id = sf_type.id;
@@ -63,13 +62,12 @@ namespace DataDownloader
 									Int32.Parse(cutoff_date.Substring(5, 2)),
 									Int32.Parse(cutoff_date.Substring(8, 2)));
 					}
-				
 				}
 				
 				if (args.cutoff_date == null)
                 {
-     				WriteLine("Sorry - this search fetch type requires a date"); ;
-					WriteLine("in the format YYYY-MM-DD and this is missing");
+					StringHelpers.SendFeedback("Sorry - this search fetch type requires a date"); ;
+					StringHelpers.SendFeedback("in the format YYYY-MM-DD and this is missing");
 					return -1;
 				}
 			}
@@ -82,8 +80,8 @@ namespace DataDownloader
 			{
 				if (string.IsNullOrEmpty(args.file_name) || !File.Exists(args.file_name))
 				{
-					WriteLine("Sorry - this search fetch type requires a file name"); ;
-					WriteLine("and no valid file path and name is supplied");
+					StringHelpers.SendFeedback("Sorry - this search fetch type requires a file name"); ;
+					StringHelpers.SendFeedback("and no valid file path and name is supplied");
 					return -1;
 				}
 			}
@@ -93,8 +91,8 @@ namespace DataDownloader
 			{
 				if (args.filter_id == 0 || args.filter_id == null)
 				{
-					WriteLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
-					WriteLine("and no valid file path and name is supplied");
+					StringHelpers.SendFeedback("Sorry - this search fetch type requires an integer referencing a search type"); ;
+					StringHelpers.SendFeedback("and no valid file path and name is supplied");
 					return -1;
 				}
 			}
@@ -105,8 +103,8 @@ namespace DataDownloader
 			{
 				if (args.previous_searches.Count() == 0)
 				{
-					WriteLine("Sorry - this search fetch type requires one or more"); ;
-					WriteLine("previous search-fetch ids and none were supplied supplied");
+					StringHelpers.SendFeedback("Sorry - this search fetch type requires one or more"); 
+					StringHelpers.SendFeedback("previous search-fetch ids and none were supplied supplied");
 					return -1;
 				}
 			}

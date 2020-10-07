@@ -9,7 +9,6 @@ namespace DataDownloader.euctr
 
     public class EUCTR_Record
     {
-        public int id { get; set; }
         public string eudract_id { get; set; }
         public string sponsor_id { get; set; }
         public string sponsor_name { get; set; }
@@ -37,16 +36,46 @@ namespace DataDownloader.euctr
         public List<DetailLine> features { get; set; }
         public List<DetailLine> population { get; set; }
 
-        public EUCTR_Record(int _n, string _eudract_id, string _sponsor_id, string _start_date)
+        public EUCTR_Record(EUCTR_Summmary s)
         {
-            id = _n;
+            eudract_id = s.eudract_id;
+            sponsor_id = s.sponsor_id;
+            sponsor_name = s.sponsor_name;
+            start_date = s.start_date;
+            medical_condition = s.medical_condition;
+            population_age = s.population_age;
+            gender = s.gender;
+            trial_status = s.trial_status;
+            details_url = s.details_url;
+            results_url = s.results_url;
+            meddra_terms = s.meddra_terms;
+    }
+
+    public EUCTR_Record()
+        { }
+    }
+
+    public class EUCTR_Summmary
+    {
+        public string eudract_id { get; set; }
+        public string sponsor_id { get; set; }
+        public string sponsor_name { get; set; }
+        public string start_date { get; set; }
+        public string medical_condition { get; set; }
+        public string population_age { get; set; }
+        public string gender { get; set; }
+        public string trial_status { get; set; }        
+        public string details_url { get; set; }
+        public string results_url { get; set; }
+
+        public List<MeddraTerm> meddra_terms { get; set; }
+
+        public EUCTR_Summmary(string _eudract_id, string _sponsor_id, string _start_date)
+        {
             eudract_id = _eudract_id;
             sponsor_id = _sponsor_id;
             start_date = _start_date;
         }
-
-        public EUCTR_Record()
-        { }
     }
 
 

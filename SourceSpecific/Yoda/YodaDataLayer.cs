@@ -45,27 +45,7 @@ namespace DataDownloader.yoda
 			builder.SearchPath = "pp";
 			_yoda_pp_connString = builder.ConnectionString;
 
-			// example appsettings.json file...
-			// the only values required are for...
-			// {
-			//	  "host": "host_name...",
-			//	  "user": "user_name...",
-			//    "password": "user_password...",
-			//	  "folder_base": "C:\\MDR JSON\\Object JSON... "
-			// }
 		}
-		
-
-		//public IEnumerable<Summary> FetchYodaSummaries()
-		//{
-		//	using (var conn = new NpgsqlConnection(_connString))
-		//	{
-		//		string sql_string = "Select id, nct_number, generic_name, study_name, ";
-		//		sql_string += "details_link, enrolment_num, csr_link from pp.study_list ";
-		//		sql_string += "order by id ";
-		//		return conn.Query<Summary>(sql_string);
-		//	}
-		//}
 
 
 		public SponsorDetails FetchYodaSponsorFromNCT(string nct_id)
@@ -73,31 +53,54 @@ namespace DataDownloader.yoda
 			using (var conn = new NpgsqlConnection(_ctg_connString))
 			{
 				string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_contributors ";
-				sql_string += "where sd_id = '" + nct_id + "' and contrib_type_id = 54;";
+				sql_string += "where sd_sid = '" + nct_id + "' and contrib_type_id = 54;";
 				return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
 			}
 		}
 
+
+		public string FetchYodaNameBaseFromNCT(string sd_sid)
+		{
+			using (var conn = new NpgsqlConnection(_ctg_connString))
+			{
+				string sql_string = "Select display_title from ad.studies ";
+				sql_string += "where sd_sid = '" + sd_sid + "'";
+				return conn.QueryFirstOrDefault<string>(sql_string);
+			}
+		}
 
 		public SponsorDetails FetchYodaSponsorFromISRCTN(string isrctn_id)
 		{
 			using (var conn = new NpgsqlConnection(_isrctn_connString))
 			{
 				string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_contributors ";
-				sql_string += "where sd_id = '" + isrctn_id + "' and contrib_type_id = 54;";
+				sql_string += "where sd_sid = '" + isrctn_id + "' and contrib_type_id = 54;";
 				return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
 			}
 		}
 
 
-		public SponsorDetails FetchYodaSponsorDetailsFromTable(string sd_id)
+		public string FetchYodaNameBaseFromISRCTN(string sd_sid)
+		{
+			using (var conn = new NpgsqlConnection(_isrctn_connString))
+			{
+				string sql_string = "Select display_title from ad.studies ";
+				sql_string += "where sd_sid = '" + sd_sid + "'";
+				return conn.QueryFirstOrDefault<string>(sql_string);
+			}
+		}
+
+
+		public SponsorDetails FetchYodaSponsorDetailsFromTable(string sd_sid)
 		{
 			using (var conn = new NpgsqlConnection(_yoda_pp_connString))
 			{
 				string sql_string = "Select sponsor_org_id as org_id, sponsor_org as org_name from pp.not_registered ";
-				sql_string += "where link_param = '" + sd_id + "'";
+				sql_string += "where sd_sid = '" + sd_sid + "'";
 				return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
 			}
 		}
+
+		
 	}
 }

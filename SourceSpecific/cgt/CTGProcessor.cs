@@ -26,8 +26,8 @@ namespace DataDownloader.ctg
 
            
 
-            //repo.StoreDatasetProperties(CopyHelpers.dataset_properties_helper,
-                                       //  s.dataset_properties);
+            //repo.StoreDatasetProperties(CopyHelpers.object_datasets_helper,
+                                       //  s.object_datasets);
         }
 
 

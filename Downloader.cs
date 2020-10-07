@@ -31,20 +31,24 @@ namespace DataDownloader
 
 		public async Task RunDownloaderAsync(Args args, Source source)
 		{
-    		// Identify source type and location, destination folder
+			// Identify source type and location, destination folder
+			StringHelpers.SendHeader("Set up");
+			StringHelpers.SendFeedback("source_id is " + args.source_id.ToString());
+			StringHelpers.SendFeedback("type_id is " + args.type_id.ToString());
+			StringHelpers.SendFeedback("file_name is " + args.file_name);
+			StringHelpers.SendFeedback("cutoff_date is " + args.cutoff_date);
 
-			Console.WriteLine("source_id is " + args.source_id.ToString());
-			Console.WriteLine("type_id is " + args.type_id.ToString());
-			Console.WriteLine("file_name is " + args.file_name);
-			Console.WriteLine("cutoff_date is " + args.cutoff_date);
+			string previous_saf_ids = null;
 			if (args.previous_searches.Count() > 0)
 			{
 				foreach (int i in args.previous_searches)
 				{
-					Console.WriteLine("previous_search is " + i.ToString());
+					StringHelpers.SendFeedback("previous_search is " + i.ToString());
+					previous_saf_ids += ", " + i.ToString();
 				}
+				previous_saf_ids = previous_saf_ids.Substring(2);
 			}
-			Console.WriteLine("no_Logging is " + args.no_logging);
+			StringHelpers.SendFeedback("no_Logging is " + args.no_logging);
 
 
 			LoggingDataLayer logging_repo = new LoggingDataLayer();
@@ -52,7 +56,7 @@ namespace DataDownloader
     		string source_file = args.file_name;
 
 			// Set up search and fetch record
-			SAFEvent saf = new SAFEvent(saf_id, source.id, args.type_id, args.filter_id);
+			SAFEvent saf = new SAFEvent(saf_id, source.id, args.type_id, args.filter_id, args.cutoff_date, previous_saf_ids);
 
 			DownloadResult res = new DownloadResult();
 
@@ -76,13 +80,13 @@ namespace DataDownloader
 						res = ctg_controller.LoopThroughPages();
 						break;
 					}
-				case 100123:
+				case 100126:
 					{
 						ISRCTN_Controller isrctn_controller = new ISRCTN_Controller(browser, saf_id, source, args, logging_repo);
 						res = isrctn_controller.LoopThroughPages(); 
 						break;
 					}
-				case 100126:
+				case 100123:
 					{
 						EUCTR_Controller euctr_controller = new EUCTR_Controller(browser, saf_id, source, args, logging_repo);
 						res = euctr_controller.LoopThroughPages(); 

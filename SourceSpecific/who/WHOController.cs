@@ -84,12 +84,14 @@ namespace DataDownloader.who
 															   DateHelpers.FetchDateTimeFromISO(r.record_date), full_path);
 							res.num_downloaded++;
 							if (added) res.num_added++;
-
-							Console.WriteLine(r.sd_sid);
 						}
-
-						Console.WriteLine(res.num_checked.ToString());
+						
+						if (res.num_checked % 100 ==0) StringHelpers.SendFeedback(res.num_checked.ToString());
 					}
+					
+					StringHelpers.SendFeedback("WHO file, number of records checked = " + res.num_checked.ToString());
+					StringHelpers.SendFeedback("WHO file, number of records downloaded = " + res.num_downloaded.ToString());
+					StringHelpers.SendFeedback("WHO file, number of records added = " + res.num_added.ToString());
 				}
 			}
 

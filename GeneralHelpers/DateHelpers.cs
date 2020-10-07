@@ -36,7 +36,7 @@ namespace DataDownloader
 
 		public static string iso_date(string instring)
 		{
-			string interim_string = WHOHelpers.tidy_string(instring);
+			string interim_string = StringHelpers.tidy_string(instring);
 			if (interim_string == null)
 			{
 				return null;

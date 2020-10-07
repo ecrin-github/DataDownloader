@@ -142,8 +142,49 @@ namespace DataDownloader
 				return (int)conn.Insert<ObjectFileRecord>(file_record);
 			}
 		}
+		
+		public bool UpdateStudyDownloadLogWithCompStatus(int source_id, string sd_id, string remote_url,
+						 int saf_id, bool? assume_complete, string full_path)
+		{
+			bool added = false; // indicates if a new record or update of an existing one
 
+			// Get the source data record and modify it
+			// or add a new one...
+			StudyFileRecord file_record = FetchStudyFileRecord(sd_id, source_id);
+			try
+			{
+				if (file_record == null)
+				{
+					// this neeeds to have a new record
+					// check last revised date....???
+					// new record
+					file_record = new StudyFileRecord(source_id, sd_id, remote_url, saf_id,
+													assume_complete, full_path);
+					InsertStudyFileRec(file_record);
+					added = true;
+				}
+				else
+				{
+					// update record
+					file_record.remote_url = remote_url;
+					file_record.last_saf_id = saf_id;
+					file_record.assume_complete = assume_complete;
+					file_record.download_status = 2;
+					file_record.last_downloaded = DateTime.Now;
+					file_record.local_path = full_path;
 
+					// Update file record
+					StoreStudyFileRec(file_record);
+				}
+
+				return added;
+			}
+			catch (Exception e)
+			{
+				StringHelpers.SendError("In UpdateStudyDownloadLogWithCompStatus: " + e.Message);
+				return false;
+			}
+		}
 		public bool UpdateStudyDownloadLog(int source_id, string sd_id, string remote_url,
 						 int saf_id, DateTime? last_revised_date, string full_path)
 		{
@@ -152,32 +193,39 @@ namespace DataDownloader
 			// Get the source data record and modify it
 			// or add a new one...
 			StudyFileRecord file_record = FetchStudyFileRecord(sd_id, source_id);
-
-			if (file_record == null)
+			try
 			{
-				// this neeeds to have a new record
-				// check last revised date....???
-				// new record
-				file_record = new StudyFileRecord(source_id, sd_id, remote_url, saf_id,
-												last_revised_date, full_path);
-				InsertStudyFileRec(file_record);
-				added = true;
-			}
-			else
-			{
-				// update record
-				file_record.remote_url = remote_url;
-				file_record.last_saf_id = saf_id;
-				file_record.last_revised = last_revised_date;
-				file_record.download_status = 2;
-				file_record.last_downloaded = DateTime.Now;
-				file_record.local_path = full_path;
+				if (file_record == null)
+				{
+					// this neeeds to have a new record
+					// check last revised date....???
+					// new record
+					file_record = new StudyFileRecord(source_id, sd_id, remote_url, saf_id,
+													last_revised_date, full_path);
+					InsertStudyFileRec(file_record);
+					added = true;
+				}
+				else
+				{
+					// update record
+					file_record.remote_url = remote_url;
+					file_record.last_saf_id = saf_id;
+					file_record.last_revised = last_revised_date;
+					file_record.download_status = 2;
+					file_record.last_downloaded = DateTime.Now;
+					file_record.local_path = full_path;
 
-				// Update file record
-				StoreStudyFileRec(file_record);
-			}
+					// Update file record
+					StoreStudyFileRec(file_record);
+				}
 
-			return added;
+				return added;
+			}
+			catch(Exception e)
+            {
+				StringHelpers.SendError("In UpdateStudyDownloadLog: " + e.Message);
+				return false;
+            }
 		}
 
 
@@ -236,6 +284,18 @@ namespace DataDownloader
 				conn.Open();
 				// Returns count of rows written 
 				return copyHelper.SaveAll(conn, entities);
+			}
+		}
+
+
+		// Stores an 'extraction note', e.g. an unusual occurence found and
+		// logged during the extraction, in the associated table.
+
+		public void StoreExtractionNote(ExtractionNote ext_note)
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				conn.Insert<ExtractionNote>(ext_note);
 			}
 		}
 

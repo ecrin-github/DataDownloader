@@ -50,7 +50,7 @@ namespace DataDownloader.biolincc
 			var study_list_table = homePage.Find("div", By.Class("table-responsive"));
 			HtmlNode[] studyRows = study_list_table.CssSelect("tbody tr").ToArray();
 
-			XmlSerializer writer = new XmlSerializer(typeof(BioLinccRecord));
+			XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
 			DownloadResult res = new DownloadResult();
 
 			// Consider each study in turn.
@@ -59,7 +59,7 @@ namespace DataDownloader.biolincc
 			{
 				// fetch the constructed study record
 				res.num_checked++;
-				BioLinccRecord st = processor.GetStudyDetails(browser, biolincc_repo, res.num_checked, row);
+				BioLincc_Record st = processor.GetStudyDetails(browser, biolincc_repo, res.num_checked, row);
 
 				if (st != null)
 				{
@@ -78,7 +78,8 @@ namespace DataDownloader.biolincc
 					System.Threading.Thread.Sleep(1000);
 				}
 
-				Console.WriteLine(res.num_checked.ToString());
+				StringHelpers.SendFeedback("Biolincc files checked: " + res.num_checked.ToString());
+				StringHelpers.SendFeedback("Biolincc files downloaded: " + res.num_downloaded.ToString());
 			}
 
 			return res;

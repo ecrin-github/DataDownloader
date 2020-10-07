@@ -96,15 +96,12 @@ namespace DataDownloader.vivli
 					HttpWebResponse errorResponse = we.Response as HttpWebResponse;
 					if (errorResponse.StatusCode == HttpStatusCode.NotFound)
 					{
-						Console.WriteLine("+++++++++++++++++++++++++++++++++++");
-						Console.WriteLine("Record " + seqnum.ToString() + "  threw a 404 error");
-						Console.WriteLine("+++++++++++++++++++++++++++++++++++");
+						StringHelpers.SendError("Record " + seqnum.ToString() + "  threw a 404 error");
 					}
 					else
                     {
-						Console.WriteLine("+++++++++++++++++++++++++++++++++++");
-						Console.WriteLine("Record " + seqnum.ToString() + "  threw error " + errorResponse.StatusCode.ToString());
-						Console.WriteLine("+++++++++++++++++++++++++++++++++++");
+						StringHelpers.SendError("Record " + seqnum.ToString() + "  threw error " + errorResponse.StatusCode.ToString());
+						StringHelpers.SendFeedback("+++++++++++++++++++++++++++++++++++");
 					}
 					return;
 				}

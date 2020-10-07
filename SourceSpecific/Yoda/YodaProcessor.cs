@@ -89,28 +89,31 @@ namespace DataDownloader.yoda
 			List<SuppDoc> supp_docs = new List<SuppDoc>();
 
 			int id = sm.id;
-			string nct_number = sm.nct_number ?? "";
+			string registry_id = sm.nct_number ?? "";
 
 			// title
 			var titleBlock = page.CssSelect("#block-views-trial-details-block-4").FirstOrDefault();
-			string title = titleBlock.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim();
-			title = title.Replace("&#039;", "'");
+			string yoda_title = titleBlock.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim();
+			string display_title = "";
+			yoda_title = yoda_title.Replace("&#039;", "'");
+
 			// is this the same title as in the main table
 			// ought to be but...
-			if (title != sm.study_name)
+
+			if (yoda_title != sm.study_name)
 			{
 				string report = "mismatch in study title - study id " + id.ToString();
-				report += "\npage title = " + title;
+				report += "\npage title = " + yoda_title;
 				report += "\nstudy name = " + sm.study_name + "\n\n";
-				Console.WriteLine(report);
+				StringHelpers.SendFeedback(report);
 			}
 
-			st.nct_number = nct_number;
-			st.is_yoda_only = (nct_number.StartsWith("NCT") || nct_number.StartsWith("ISRCTN")) ? false : true;
-			st.title = title;
+			st.registry_id = registry_id;
+			st.is_yoda_only = (registry_id.StartsWith("NCT") || registry_id.StartsWith("ISRCTN")) ? false : true;
+			st.yoda_title = yoda_title;
 			st.remote_url = sm.details_link;
 
-			Console.WriteLine(id.ToString());
+			StringHelpers.SendFeedback(id.ToString());
 
 			// study properties
 			var propsBlock = page.CssSelect("#block-views-trial-details-block-2");
@@ -148,7 +151,7 @@ namespace DataDownloader.yoda
 						case "Mean/Median Age (Years)": st.mean_age = value; break;
 						default:
 							{
-								Console.WriteLine(label);
+								StringHelpers.SendFeedback(label);
 								break;
 							}
 					}
@@ -205,10 +208,9 @@ namespace DataDownloader.yoda
 					string report = "mismatch in csr summary link - study id " + id.ToString();
 					report += "\nicon csr link = " + sd.url;
 					report += "\ntable csr link = " + sm.csr_link + "\n\n";
-					Console.WriteLine(report);
+					StringHelpers.SendFeedback(report);
 				}
 			}
-
 
 			// primary citation
 			var primCitation = iconsBlock.CssSelect(".views-field-field-primary-citation");
@@ -342,22 +344,32 @@ namespace DataDownloader.yoda
 			string sponsor_org;
 			string identifier_value;
 
-			if (nct_number.StartsWith("NCT"))
+			if (registry_id.StartsWith("NCT"))
 			{
                 // use nct_id to get sponsor id and name
-				SponsorDetails sponsor = repo.FetchYodaSponsorFromNCT(nct_number);
+				SponsorDetails sponsor = repo.FetchYodaSponsorFromNCT(registry_id);
 				sponsor_org_id = sponsor.org_id;
 				sponsor_org = sponsor.org_name;
-				identifier_value = nct_number;
+				identifier_value = registry_id;
 				study_identifiers.Add(new Identifier(identifier_value, 11, "Trial Registry ID", 100120, "ClinicalTrials.gov"));
+				display_title = repo.FetchYodaNameBaseFromNCT(registry_id);
+				if (display_title != null)
+                {
+					st.display_title = display_title;
+				}
 			}
-			else if (nct_number.StartsWith("ISRCTN"))
+			else if (registry_id.StartsWith("ISRCTN"))
 			{
-				SponsorDetails sponsor = repo.FetchYodaSponsorFromISRCTN(nct_number);
+				SponsorDetails sponsor = repo.FetchYodaSponsorFromISRCTN(registry_id);
 				sponsor_org_id = sponsor.org_id;
 				sponsor_org = sponsor.org_name;
-				identifier_value = nct_number;
+				identifier_value = registry_id;
 				study_identifiers.Add(new Identifier(identifier_value, 11, "Trial Registry ID", 100126, "ISRCTN"));
+				display_title = repo.FetchYodaNameBaseFromISRCTN(registry_id);
+				if (display_title != null)
+				{
+					st.display_title = display_title;
+				}
 			}
 			else
 			{
@@ -366,7 +378,7 @@ namespace DataDownloader.yoda
 				{
 					sponsor_org_id = 0;
 					sponsor_org = "";
-					Console.WriteLine("No sponsor found for " + title);
+					StringHelpers.SendFeedback("No sponsor found for " + yoda_title);
 				}
 				else
 				{
@@ -387,7 +399,8 @@ namespace DataDownloader.yoda
 
 			// for the study, add the title (seems to be the full scientific title)
 			bool is_default_title = (st.is_yoda_only) ? true : false;
-			study_titles.Add(new Title(st.sd_sid, st.title, 18, "Other scientific title", is_default_title, "From YODA web page"));
+
+			study_titles.Add(new Title(st.sd_sid, st.yoda_title, 18, "Other scientific title", is_default_title, "From YODA web page"));
 
 			// create study references (pmids)
 			if (st.primary_citation_link.Contains("http"))
@@ -403,8 +416,8 @@ namespace DataDownloader.yoda
 					{
 						study_references.Add(new Reference(link));
 					}
-
 				}
+
 
 				else if (st.primary_citation_link.Contains("/pmc/articles/"))
 				{

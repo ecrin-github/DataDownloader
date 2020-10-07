@@ -74,7 +74,8 @@ namespace DataDownloader.pubmed
 			{
 				string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmids_by_source;
                         CREATE TABLE IF NOT EXISTS pp.temp_pmids_by_source(
-				        pmid varchar) ";
+                        sd_sid varchar
+                      , pmid varchar) ";
 				conn.Execute(sql_string);
 			}
 		}
@@ -85,8 +86,9 @@ namespace DataDownloader.pubmed
 			{
 				string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
                        CREATE TABLE IF NOT EXISTS pp.pmids_by_source_total(
-				         source_id int
-                       , pmid varchar)";
+				        source_id int
+                      , sd_sid varchar
+                      , pmid varchar)";
 				conn.Execute(sql_string);
 			}
 		}
@@ -120,7 +122,8 @@ namespace DataDownloader.pubmed
 
 			using (var conn = new NpgsqlConnection(db_conn_string))
 			{
-				string sql_string = @"SELECT DISTINCT pmid from ad.study_references 
+				string sql_string = @"SELECT DISTINCT 
+                        sd_sid, pmid from ad.study_references 
 				        where pmid is not null";
 				return conn.Query<PMIDBySource>(sql_string);
 			}
@@ -141,8 +144,8 @@ namespace DataDownloader.pubmed
 			using (var conn = new NpgsqlConnection(connString))
 			{
 				string sql_string = @"INSERT INTO pp.pmids_by_source_total(
-				          source_id, pmid) 
-                          SELECT " + source_id.ToString() + @", pmid
+				          source_id, sd_sid, pmid) 
+                          SELECT " + source_id.ToString() + @", sd_sid, pmid
 						  FROM pp.temp_pmids_by_source;";
 				conn.Execute(sql_string);
 			}
@@ -181,15 +184,6 @@ namespace DataDownloader.pubmed
 			using (var conn = new NpgsqlConnection(connString))
 			{
 				string sql_string = "DROP TABLE IF EXISTS pp.temp_pmids_by_source";
-				conn.Execute(sql_string);
-			}
-		}
-
-		public void DropPMIDSourceCollectorTable()
-		{
-			using (var conn = new NpgsqlConnection(connString))
-			{
-				string sql_string = "DROP TABLE IF EXISTS pp.pmids_by_source_total";
 				conn.Execute(sql_string);
 			}
 		}
@@ -267,8 +261,7 @@ namespace DataDownloader.pubmed
 
 			catch (HttpRequestException e)
 			{
-				Console.WriteLine("\nException Caught!");
-				Console.WriteLine("Message :{0} ", e.Message);
+				StringHelpers.SendError("In PubMed GetBankDataCountAsync: "+ e.Message);
 				return 0;
 			}
 		}
@@ -338,15 +331,6 @@ namespace DataDownloader.pubmed
 			using (var conn = new NpgsqlConnection(connString))
 			{
 				string sql_string = "DROP TABLE IF EXISTS pp.temp_pmids_by_bank";
-				conn.Execute(sql_string);
-			}
-		}
-
-		public void DropPMIDBankCollectorTable()
-		{
-			using (var conn = new NpgsqlConnection(connString))
-			{
-				string sql_string = "DROP TABLE IF EXISTS pp.pmids_by_bank_total";
 				conn.Execute(sql_string);
 			}
 		}

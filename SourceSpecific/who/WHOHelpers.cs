@@ -3,31 +3,10 @@ using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 
-namespace DataDownloader
+namespace DataDownloader.who
 {
 	public static class WHOHelpers
 	{
-		public static string tidy_string(string instring)
-		{
-			string return_value = null;
-			if (instring != null && instring != "NULL" && instring != "null"
-								&& instring != "\"NULL\"" && instring != "\"null\"")
-			{
-				if (!instring.StartsWith('"'))
-				{
-					char[] chars1 = { ' ', ';' };
-					instring = instring.Trim(chars1);
-				}
-				else
-				{
-					char[] chars2 = { '"', ' ', ';' };
-					instring = instring.Trim(chars2);
-				}
-				return_value = (instring == "") ? null : instring;
-			}
-			return return_value;
-		}
-
 
 		public static List<string> split_string(string instring)
 		{
@@ -37,7 +16,7 @@ namespace DataDownloader
 			}
 			else
 			{
-				string string_list = tidy_string(instring);
+				string string_list = StringHelpers.tidy_string(instring);
 				if (string.IsNullOrEmpty(string_list))
 				{
 					return null;
@@ -59,7 +38,7 @@ namespace DataDownloader
 			}
 			else
 			{
-				string id_list = tidy_string(instring);
+				string id_list = StringHelpers.tidy_string(instring);
 				if (string.IsNullOrEmpty(id_list))
 				{
 					return null;

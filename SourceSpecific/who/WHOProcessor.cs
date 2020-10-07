@@ -40,20 +40,20 @@ namespace DataDownloader.who
 
 			SplitAndAddIds(secondary_ids, sd_sid, sr.SecondaryIDs, "secondary ids");
 
-			r.public_title = WHOHelpers.tidy_string(sr.public_title);
-			r.scientific_title = WHOHelpers.tidy_string(sr.Scientific_title);
-			r.remote_url = WHOHelpers.tidy_string(sr.url);
+			r.public_title = StringHelpers.tidy_string(sr.public_title);
+			r.scientific_title = StringHelpers.tidy_string(sr.Scientific_title);
+			r.remote_url = StringHelpers.tidy_string(sr.url);
 
-			r.public_contact_givenname = WHOHelpers.tidy_string(sr.Public_Contact_Firstname);
-			r.public_contact_familyname = WHOHelpers.tidy_string(sr.Public_Contact_Lastname);
-			r.public_contact_affiliation = WHOHelpers.tidy_string(sr.Public_Contact_Affiliation);
-			r.public_contact_email = WHOHelpers.tidy_string(sr.Public_Contact_Email);
-     		r.scientific_contact_givenname = WHOHelpers.tidy_string(sr.Scientific_Contact_Firstname);
-			r.scientific_contact_familyname = WHOHelpers.tidy_string(sr.Scientific_Contact_Lastname);
-			r.scientific_contact_affiliation = WHOHelpers.tidy_string(sr.Scientific_Contact_Affiliation);
-			r.scientific_contact_email = WHOHelpers.tidy_string(sr.Scientific_Contact_Email);
+			r.public_contact_givenname = StringHelpers.tidy_string(sr.Public_Contact_Firstname);
+			r.public_contact_familyname = StringHelpers.tidy_string(sr.Public_Contact_Lastname);
+			r.public_contact_affiliation = StringHelpers.tidy_string(sr.Public_Contact_Affiliation);
+			r.public_contact_email = StringHelpers.tidy_string(sr.Public_Contact_Email);
+     		r.scientific_contact_givenname = StringHelpers.tidy_string(sr.Scientific_Contact_Firstname);
+			r.scientific_contact_familyname = StringHelpers.tidy_string(sr.Scientific_Contact_Lastname);
+			r.scientific_contact_affiliation = StringHelpers.tidy_string(sr.Scientific_Contact_Affiliation);
+			r.scientific_contact_email = StringHelpers.tidy_string(sr.Scientific_Contact_Email);
 
-			string study_type = WHOHelpers.tidy_string(sr.study_type);
+			string study_type = StringHelpers.tidy_string(sr.study_type);
 			if (study_type != null)
 			{
 				string stype = study_type.ToLower();
@@ -72,7 +72,7 @@ namespace DataDownloader.who
 				}
 			}
 			
-			string study_status = WHOHelpers.tidy_string(sr.Recruitment_status);
+			string study_status = StringHelpers.tidy_string(sr.Recruitment_status);
 			if (study_status != null && study_status.Length > 5)
             {
 				string status = study_status.ToLower();
@@ -134,12 +134,12 @@ namespace DataDownloader.who
 			r.date_registration = DateHelpers.iso_date(sr.Date_registration);
 			r.date_enrolment = DateHelpers.iso_date(sr.Date_enrollement);
 
-			r.target_size = WHOHelpers.tidy_string(sr.Target_size);
-			r.primary_sponsor = WHOHelpers.tidy_string(sr.Primary_sponsor);
-			r.secondary_sponsors = WHOHelpers.tidy_string(sr.Secondary_sponsors);
-			r.source_support = WHOHelpers.tidy_string(sr.Source_Support);
+			r.target_size = StringHelpers.tidy_string(sr.Target_size);
+			r.primary_sponsor = StringHelpers.tidy_string(sr.Primary_sponsor);
+			r.secondary_sponsors = StringHelpers.tidy_string(sr.Secondary_sponsors);
+			r.source_support = StringHelpers.tidy_string(sr.Source_Support);
 
-			string design_list = WHOHelpers.tidy_string(sr.study_design);
+			string design_list = StringHelpers.tidy_string(sr.study_design);
 			if (design_list != null)
             {
 				r.design_string = design_list;
@@ -267,7 +267,7 @@ namespace DataDownloader.who
 				}
 			}
 
-			string phase_list = WHOHelpers.tidy_string(sr.phase);
+			string phase_list = StringHelpers.tidy_string(sr.phase);
 			if (phase_list != null)
 			{
 				r.phase_string = phase_list;
@@ -371,9 +371,9 @@ namespace DataDownloader.who
 
 			r.condition_list = GetConditions(sd_sid, sr.Conditions);
 
-			r.interventions = WHOHelpers.tidy_string(sr.Interventions);
+			r.interventions = StringHelpers.tidy_string(sr.Interventions);
 
-			string agemin = WHOHelpers.tidy_string(sr.Agemin);
+			string agemin = StringHelpers.tidy_string(sr.Agemin);
 			if(agemin != null)
             {
 				if (Regex.Match(agemin, @"\d+").Success)
@@ -383,7 +383,7 @@ namespace DataDownloader.who
 				}
             }
 
-			string agemax = WHOHelpers.tidy_string(sr.Agemax);
+			string agemax = StringHelpers.tidy_string(sr.Agemax);
 			if (agemax != null)
 			{
 				if (Regex.Match(agemax, @"\d+").Success)
@@ -393,7 +393,7 @@ namespace DataDownloader.who
 				}
 			}
 
-			string gender = WHOHelpers.tidy_string(sr.Gender);
+			string gender = StringHelpers.tidy_string(sr.Gender);
 			if (gender != null)
 			{
 				string gen = gender.ToLower();
@@ -437,35 +437,35 @@ namespace DataDownloader.who
 				r.gender = "Not provided";
 			}
 
-			r.inclusion_criteria = WHOHelpers.tidy_string(sr.Inclusion_Criteria);
-			r.exclusion_criteria = WHOHelpers.tidy_string(sr.Exclusion_Criteria);
-			r.primary_outcome = WHOHelpers.tidy_string(sr.Primary_Outcome);
-			r.secondary_outcomes = WHOHelpers.tidy_string(sr.Secondary_Outcomes);
+			r.inclusion_criteria = StringHelpers.tidy_string(sr.Inclusion_Criteria);
+			r.exclusion_criteria = StringHelpers.tidy_string(sr.Exclusion_Criteria);
+			r.primary_outcome = StringHelpers.tidy_string(sr.Primary_Outcome);
+			r.secondary_outcomes = StringHelpers.tidy_string(sr.Secondary_Outcomes);
 
-			r.bridging_flag = WHOHelpers.tidy_string(sr.Bridging_flag);
+			r.bridging_flag = StringHelpers.tidy_string(sr.Bridging_flag);
 			if (r.bridging_flag != null && r.bridging_flag != r.sd_sid)
             {
 				AddSecondaryId(secondary_ids, r.sd_sid, "bridging flag", r.bridging_flag);
 			}
 
-			r.bridged_type = WHOHelpers.tidy_string(sr.Bridged_type);
+			r.bridged_type = StringHelpers.tidy_string(sr.Bridged_type);
 
-			r.childs = WHOHelpers.tidy_string(sr.Childs);
+			r.childs = StringHelpers.tidy_string(sr.Childs);
 			SplitAndAddIds(secondary_ids, r.sd_sid, sr.Childs, "bridged child recs");
 
-			r.type_enrolment = WHOHelpers.tidy_string(sr.type_enrolment);
-			r.retrospective_flag = WHOHelpers.tidy_string(sr.Retrospective_flag);
+			r.type_enrolment = StringHelpers.tidy_string(sr.type_enrolment);
+			r.retrospective_flag = StringHelpers.tidy_string(sr.Retrospective_flag);
 
-			r.results_yes_no = WHOHelpers.tidy_string(sr.results_yes_no);
-			r.results_actual_enrollment = WHOHelpers.tidy_string(sr.results_actual_enrollment);
-			r.results_url_link = WHOHelpers.tidy_string(sr.results_url_link);
-			r.results_summary = WHOHelpers.tidy_string(sr.results_summary);
+			r.results_yes_no = StringHelpers.tidy_string(sr.results_yes_no);
+			r.results_actual_enrollment = StringHelpers.tidy_string(sr.results_actual_enrollment);
+			r.results_url_link = StringHelpers.tidy_string(sr.results_url_link);
+			r.results_summary = StringHelpers.tidy_string(sr.results_summary);
 			r.results_date_posted = DateHelpers.iso_date(sr.results_date_posted);
 			r.results_date_first_publication = DateHelpers.iso_date(sr.results_date_first_publication);
-			r.results_url_protocol = WHOHelpers.tidy_string(sr.results_url_protocol);
+			r.results_url_protocol = StringHelpers.tidy_string(sr.results_url_protocol);
 			r.results_date_completed = DateHelpers.iso_date(sr.results_date_completed);
 
-			string ipd_plan = WHOHelpers.tidy_string(sr.results_IPD_plan);
+			string ipd_plan = StringHelpers.tidy_string(sr.results_IPD_plan);
 
 			if (ipd_plan != null && ipd_plan.Length > 10)
             {
@@ -476,7 +476,7 @@ namespace DataDownloader.who
                 }
 			}
 
-			string ipd_description = WHOHelpers.tidy_string(sr.results_IPD_description);
+			string ipd_description = StringHelpers.tidy_string(sr.results_IPD_description);
 			if (ipd_description != null && ipd_description.Length > 10)
 			{
 				if (ipd_description.ToLower() != "not available" && ipd_description.ToLower() != "not avavilable"
@@ -499,7 +499,7 @@ namespace DataDownloader.who
 			List<StudyCondition> conditions = new List<StudyCondition>();
 			if (!string.IsNullOrEmpty(instring))
 			{
-				string condition_list = WHOHelpers.tidy_string(instring);
+				string condition_list = StringHelpers.tidy_string(instring);
 				if (!string.IsNullOrEmpty(condition_list))
 				{
 					// replace escaped characters to remove the semi-colons
@@ -624,7 +624,7 @@ namespace DataDownloader.who
 		{
 			if (!string.IsNullOrEmpty(instring))
 			{
-				string id_list = WHOHelpers.tidy_string(instring);
+				string id_list = StringHelpers.tidy_string(instring);
 				if (!string.IsNullOrEmpty(id_list))
 				{
 					List<string> ids = id_list.Split(";").ToList();
@@ -668,7 +668,7 @@ namespace DataDownloader.who
 					sec_id_source = 100120;
 				}
 				if (processed_id == "NCT11111111" || processed_id == "NCT99999999"
-					|| processed_id == "NCT12345678" || processed_id == "NC87654321")
+					|| processed_id == "NCT12345678" || processed_id == "NCT87654321")
 				{
 					// remove these 
 					processed_id = null;
@@ -947,6 +947,7 @@ namespace DataDownloader.who
 			}
 			return source_id;
 		}
+
 
 		private string get_folder(int source_id)
 		{

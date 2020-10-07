@@ -11,9 +11,9 @@ namespace DataDownloader.biolincc
     public class BioLINCC_Processor
 	{
 
-		public BioLinccRecord GetStudyDetails(ScrapingBrowser browser, BioLinccDataLayer repo, int seqnum, HtmlNode row)
+		public BioLincc_Record GetStudyDetails(ScrapingBrowser browser, BioLinccDataLayer repo, int seqnum, HtmlNode row)
 		{
-			BioLinccRecord st = new BioLinccRecord();
+			BioLincc_Record st = new BioLincc_Record();
 
 			// get the basic information from the row
 			// passed from the summary studies table
@@ -41,7 +41,7 @@ namespace DataDownloader.biolincc
 			char[] splitter = { '(' };
 
 			// Start the extraction for this study
-			Console.WriteLine(seqnum.ToString() + ":" + st.acronym);
+			StringHelpers.SendFeedback(seqnum.ToString() + ":" + st.acronym);
 
 			WebPage studyPage = browser.NavigateToPage(new Uri(st.remote_url));
 

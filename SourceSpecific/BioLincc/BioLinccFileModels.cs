@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DataDownloader.biolincc
 {
-	public class BioLinccRecord
+	public class BioLincc_Record
 	{
 		public string sd_sid { get; set; }
 		public string remote_url { get; set; }

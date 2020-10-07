@@ -65,7 +65,7 @@ namespace DataDownloader.vivli
 
 				// Log to console and pause before the next page
 
-				Console.WriteLine(i.ToString());
+				StringHelpers.SendFeedback(i.ToString());
 				System.Threading.Thread.Sleep(1000);
 			}
 		}
@@ -90,7 +90,7 @@ namespace DataDownloader.vivli
 				// logging to go here
 
 				// write to console...
-				Console.WriteLine(s.id.ToString() + ": " + s.vivli_url);
+				StringHelpers.SendFeedback(s.id.ToString() + ": " + s.vivli_url);
 
 				// put a pause here if necessary
     			System.Threading.Thread.Sleep(800);

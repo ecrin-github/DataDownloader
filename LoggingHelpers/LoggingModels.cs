@@ -23,10 +23,10 @@ namespace DataDownloader
 		public bool has_study_relationships { get; set; }
 		public bool has_study_links { get; set; }
 		public bool has_study_ipd_available { get; set; }
-		public bool has_dataset_properties { get; set; }
-		public bool uses_language_default { get; set; }
-		public bool has_object_languages { get; set; }
+		public bool has_object_datasets { get; set; }
 		public bool has_object_dates { get; set; }
+		public bool has_object_relationships { get; set; }
+		public bool has_object_rights { get; set; }
 		public bool has_object_pubmed_set { get; set; }
 	}
 
@@ -64,20 +64,23 @@ namespace DataDownloader
 
 		public SAFEvent() { }
 
-		public SAFEvent(int _id, int _source_id, int _type_id, int? _filter_id) 
+		public SAFEvent(int _id, int _source_id, int _type_id, int? _filter_id, DateTime? _cut_off_date, string _previous_saf_ids)
 		{
 			id = _id;
 			source_id = _source_id;
 			type_id = _type_id;
 			filter_id = _filter_id;
+			cut_off_date = _cut_off_date;
+			previous_saf_ids = _previous_saf_ids;
 			time_started = DateTime.Now;
 		}
 	}
 
 
-		[Table("sf.source_data_studies")]
+	[Table("sf.source_data_studies")]
 	public class StudyFileRecord
 	{
+		[Key] 
 		public int id { get; set; }
 		public int source_id { get; set; }
 		public string sd_id { get; set; }
@@ -131,6 +134,7 @@ namespace DataDownloader
 	[Table("sf.source_data_objects")]
 	public class ObjectFileRecord
 	{
+		[Key]
 		public int id { get; set; }
 		public int source_id { get; set; }
 		public string sd_id { get; set; }
@@ -208,6 +212,30 @@ namespace DataDownloader
 		public string pmcid { get; set; }
 		public string pmid { get; set; }
 		public string doi { get; set; }
+	}
+
+
+	[Table("sf.extraction_notes")]
+	public class ExtractionNote
+	{
+		public int id { get; set; }
+		public int source_id { get; set; }
+		public string sd_id { get; set; }
+		public string event_type { get; set; }
+		public int event_type_id { get; set; }
+		public int? note_type_id { get; set; }
+		public string note { get; set; }
+
+		public ExtractionNote(int _source_id, string _sd_id, string _event_type,
+							  int _event_type_id, int? _note_type_id, string _note)
+		{
+			source_id = _source_id;
+			sd_id = _sd_id;
+			event_type = _event_type;
+			event_type_id = _event_type_id;
+			note_type_id = _note_type_id;
+			note = _note;
+		}
 	}
 
 }
