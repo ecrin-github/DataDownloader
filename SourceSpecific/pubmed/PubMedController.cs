@@ -84,27 +84,33 @@ namespace DataDownloader.pubmed
 			{
 				// download pmids with references to trial registries, that
 				// have been revised since the cutoff date
-				await CreatePMIDsListfromBanksAsync();
-				res = await DownloadPubmedEntriesUsingBanksAsync();
+				//await CreatePMIDsListfromBanksAsync();
+				//IEnumerable<string> idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
+				IEnumerable<string> idstrings = pubmed_repo.FetchDistinctMissingPMIDStrings();
+				res = await DownloadPubmedEntriesAsync(idstrings);
 			}
 			if (args.type_id == 114 && args.filter_id == 10004)
 			{
 				// download pmids listed as references in other sources,
 				// that have been revised since the cutoff date
 				CreatePMIDsListfromSources();
-				//res = await DownloadPubmedEntriesUsingSourcesAsync();
+				IEnumerable<string> idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
+
+				res = await DownloadPubmedEntriesAsync(idstrings);
 			}
 			if (args.type_id == 121 && args.filter_id == 10003)
 			{
 				// download all pmids with references to trial registries
 				await CreatePMIDsListfromBanksAsync();
-				res = await DownloadPubmedEntriesUsingBanksAsync();
+				IEnumerable<string> idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
+				res = await DownloadPubmedEntriesAsync(idstrings);
 			}
 			if (args.type_id == 121 && args.filter_id == 10004)
 			{
 				// download all pmids listed as references in other sources
 				CreatePMIDsListfromSources();
-				res = await DownloadPubmedEntriesUsingSourcesAsync();
+				IEnumerable<string> idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
+				res = await DownloadPubmedEntriesAsync(idstrings);
 			}
 			return res;
 		}
@@ -135,83 +141,6 @@ namespace DataDownloader.pubmed
 		}
 
 
-		public async Task<DownloadResult> DownloadPubmedEntriesUsingSourcesAsync()
-        {
-			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?";
-			baseURL += "tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
-
-			// get list of relevant PMIDs into memory
-			IEnumerable<string> idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
-			DownloadResult res = new DownloadResult();
-			bool ignore_revision_date = (args.type_id == 121) ? true : false;
-
-			try
-			{
-				// loop through the references - alerady in groups of 10 
-				// from processing in the database call
-				foreach (string idstring in idstrings)
-				{
-					// Construct the fetch URL using the 10 Ids and
-					// retrieve the articles as nodes
-
-					string url = baseURL + idstring + "&retmode=xml";
-					XmlDocument xdoc = new XmlDocument();
-					string responseBody = await webClient.GetStringAsync(url);
-					xdoc.LoadXml(responseBody);
-					XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
-
-					// Consider each article node in turn
-
-					foreach (XmlNode article in articles)
-					{
-						string pmid = article.SelectSingleNode("MedlineCitation/PMID").InnerText;
-						if (Int32.TryParse(pmid, out int ipmid))
-						{
-							// get current or new file download record, calculate
-							// and store last revised date. Write new or replace
-							// file and update file_record (by ref).
-							res.num_checked++;
-							ObjectFileRecord file_record = GetObjectRecord(pmid);
-							file_record.last_revised = GetDateLastRevised(article);
-							if (file_record.download_status == 0)
-							{
-								WriteNewFile(article, ipmid, file_record);
-								res.num_added++;
-								res.num_downloaded++;
-							}
-							else
-							{
-								// normally should be less then but here <= to be sure
-								if (ignore_revision_date || 
-									     (file_record.last_revised != null 
-										   && file_record.last_downloaded <= file_record.last_revised))
-								{
-									ReplaceFile(article, file_record);
-									res.num_downloaded++;
-								}
-							}
-							file_record.last_saf_id = saf_id;
-							logging_repo.StoreObjectFileRec(file_record);
-
-							if (res.num_checked % 100 == 0) StringHelpers.SendFeedback(res.num_checked.ToString());
-      					}
-					}
-
-					System.Threading.Thread.Sleep(1200);
-				}
-
-				//if (res.num_checked > 500) break;  // testing only
-				return res;
-			}
-
-			catch (HttpRequestException e)
-			{
-				StringHelpers.SendError("In PubMed DownloadPubmedEntriesUsingSourcesAsync(): " + e.Message);
-				return res;
-			}
-        }
-
-
 		public async Task CreatePMIDsListfromBanksAsync()
 		{
 			int totalRecords, numCallsNeeded, bank_id;
@@ -234,7 +163,7 @@ namespace DataDownloader.pubmed
 				bank_id = s.id;
 				search_term = s.nlm_abbrev + "[SI]";
 				if (include_dates)
-                {
+				{
 					string today = DateTime.Now.ToString("yyyy/MM/dd");
 					string cutoff = ((DateTime)args.cutoff_date).ToString("yyyy/MM/dd");
 					string date_term = "&mindate=" + cutoff + "&maxdate=" + today + "&datetype=mdat";
@@ -276,7 +205,7 @@ namespace DataDownloader.pubmed
 								pubmed_repo.StorePMIDsByBank(helper.bank_ids_helper, FoundIds);
 
 								string feedback = "Storing " + retmax.ToString() +
-												  " records from " + start.ToString() + " in bank "+ search_term;
+												  " records from " + start.ToString() + " in bank " + search_term;
 								StringHelpers.SendFeedback(feedback);
 							}
 						}
@@ -297,89 +226,86 @@ namespace DataDownloader.pubmed
 		}
 
 
-		public async Task<DownloadResult> DownloadPubmedEntriesUsingBanksAsync()
-		{
+		public async Task<DownloadResult> DownloadPubmedEntriesAsync(IEnumerable<string> idstrings)
+        {
 			string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?";
 			baseURL += "tool=ECRINMDR&email=steve.canham@ecrin.org&db=pubmed&id=";
-
-			// get list of relevant PMID ids into memory
-			IEnumerable<string> idStrings = pubmed_repo.FetchDistinctBankPMIDStrings();
 			DownloadResult res = new DownloadResult();
+			bool ignore_revision_date = (args.type_id == 121) ? true : false;
 
-			foreach (string idString in idStrings)
+			try
 			{
-				try
-				{
-					// Construct the fetch URL using the 10 Ids in
-					// idString and retrieve the articles as nodes
+				// loop through the references - already in groups of 10 
+				// from processing in the database call
 
-					string url = baseURL + idString + "&retmode=xml";
+				foreach (string idstring in idstrings)
+				{
+					// Construct the fetch URL using the 10 Ids and
+					// retrieve the articles as nodes
+
+					string url = baseURL + idstring + "&retmode=xml";
 					XmlDocument xdoc = new XmlDocument();
 					string responseBody = await webClient.GetStringAsync(url);
 					xdoc.LoadXml(responseBody);
 					XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
 
-					// Go through each article node in turn
+					// Consider each article node in turn
 
 					foreach (XmlNode article in articles)
 					{
 						string pmid = article.SelectSingleNode("MedlineCitation/PMID").InnerText;
-						res.num_checked++;
-
 						if (Int32.TryParse(pmid, out int ipmid))
 						{
-							// get current or new record in file download table and
-							// update last revised date. Write a new or replace an 
-							// existing file and update thenfile record (by ref).
-
-							ObjectFileRecord file_record = GetObjectRecord(pmid);
-							file_record.last_revised = GetDateLastRevised(article);
-
-							if (file_record.download_status == 0)
-							{
+							// get current or new file download record, calculate
+							// and store last revised date. Write new or replace
+							// file and update file_record (by ref).
+							res.num_checked++;
+							DateTime? last_revised_datetime = GetDateLastRevised(article);
+							ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, source.id);
+							if (file_record == null)
+                            {
+								string remote_url = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid;
+								file_record = new ObjectFileRecord(source.id, pmid, remote_url, saf_id);
+							    file_record.last_revised = last_revised_datetime;
 								WriteNewFile(article, ipmid, file_record);
+								
+								logging_repo.InsertObjectFileRec(file_record);
 								res.num_added++;
 								res.num_downloaded++;
 							}
 							else
 							{
-								ReplaceFile(article, file_record);
-								res.num_downloaded++;
+								// normally should be less then but here <= to be sure
+								if (ignore_revision_date || 
+								   (last_revised_datetime != null 
+										   && file_record.last_downloaded <= last_revised_datetime))
+								{
+									file_record.last_saf_id = saf_id;
+									file_record.last_revised = last_revised_datetime;
+									ReplaceFile(article, file_record);
+
+							        logging_repo.StoreObjectFileRec(file_record);
+									res.num_downloaded++;
+								}
 							}
-							file_record.last_saf_id = saf_id;
-							logging_repo.StoreObjectFileRec(file_record);
-						}
+
+							if (res.num_checked % 100 == 0) StringHelpers.SendFeedback(res.num_checked.ToString());
+      					}
 					}
 
-					System.Threading.Thread.Sleep(1200);
+					System.Threading.Thread.Sleep(800);
 				}
 
-			    catch (HttpRequestException e)
-				{
-					StringHelpers.SendError("In Pubmed DownloadPubmedEntriesUsingBanksAsync" + e.Message);
-					return res;
-				}
+				return res;
 			}
-			
-			return res;
-		}
 
-
-		public ObjectFileRecord GetObjectRecord(string pmid)
-		{
-			// get current record in file download table
-			ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, 100135);
-
-			if (file_record == null)
+			catch (HttpRequestException e)
 			{
-				// this is not yet in the table - create a new record
-				file_record = new ObjectFileRecord();
-				file_record.source_id = 100135;
-				file_record.sd_id = pmid;
-				file_record.download_status = 0;
+				StringHelpers.SendError("In PubMed DownloadPubmedEntriesUsingSourcesAsync(): " + e.Message);
+				return res;
 			}
-			return file_record;
-		}
+        }
+
 
 		private DateTime? GetDateLastRevised(XmlNode article)
 		{
@@ -401,9 +327,14 @@ namespace DataDownloader.pubmed
 			return date_last_revised;
 		}
 
+
 		private void WriteNewFile(XmlNode article, int ipmid, ObjectFileRecord file_record)
 		{
 			string folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
+			if (!Directory.Exists(folder_name))
+			{
+				Directory.CreateDirectory(folder_name);
+			}
 			string filename = "PM" + ipmid.ToString("000000000") + ".xml";
 			string full_path = Path.Combine(folder_name, filename);
 
@@ -416,6 +347,7 @@ namespace DataDownloader.pubmed
 			file_record.download_status = 2;
 			file_record.last_downloaded = DateTime.Now;
 		}
+
 
 		private void ReplaceFile(XmlNode article, ObjectFileRecord file_record)
         {

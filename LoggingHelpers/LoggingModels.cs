@@ -178,6 +178,17 @@ namespace DataDownloader
 			local_path = _local_path;
 		}
 
+
+		// constructor when a new file record required, when a pmid new to the system is found
+		public ObjectFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_saf_id)
+		{
+			source_id = _source_id;
+			sd_id = _sd_id;
+			remote_url = _remote_url;
+			last_saf_id = _last_saf_id;
+			download_status = 0;
+		}
+
 		public ObjectFileRecord()
 		{ }
 

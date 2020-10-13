@@ -76,8 +76,8 @@ namespace DataDownloader
 					}
 				case 100120:
 					{
-						CTG_Controller ctg_controller = new CTG_Controller(browser, saf_id, source, args, logging_repo);
-						res = ctg_controller.LoopThroughPages();
+						CTG_Controller ctg_controller = new CTG_Controller(saf_id, source, args, logging_repo);
+						res = await ctg_controller.ProcessDataAsync();
 						break;
 					}
 				case 100126:

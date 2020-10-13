@@ -7,7 +7,7 @@ using DataDownloader.isrctn;
 using DataDownloader.euctr;
 using DataDownloader.who;
 using DataDownloader.vivli;
-
+using System.Xml;
 
 namespace DataDownloader
 {

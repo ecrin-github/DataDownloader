@@ -124,7 +124,7 @@ namespace DataDownloader.pubmed
 			{
 				string sql_string = @"SELECT DISTINCT 
                         sd_sid, pmid from ad.study_references 
-				        where pmid is not null";
+				        where pmid is not null and pmid <> ''";
 				return conn.Query<PMIDBySource>(sql_string);
 			}
 		}
@@ -325,6 +325,19 @@ namespace DataDownloader.pubmed
 				return conn.Query<string>(sql_string);
 			}
 		}
+
+
+		public IEnumerable<string> FetchDistinctMissingPMIDStrings()
+		{
+			using (var conn = new NpgsqlConnection(connString))
+			{
+				string sql_string = @"select distinct string_agg(pmid, ', ') 
+                        OVER (PARTITION BY group_id) 
+                        from pp.missing_pmids_grouped;";
+				return conn.Query<string>(sql_string);
+			}
+		}
+		
 
 		public void DropTempPMIDByBankTable()
 		{
