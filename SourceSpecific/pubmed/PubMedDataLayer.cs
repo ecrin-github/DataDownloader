@@ -55,7 +55,6 @@ namespace DataDownloader.pubmed
 			folder_base = settings["folder_base"];
 		}
 
-
 		// Tables and functions used for the PMIDs collected from DB Sources
 
 		public IEnumerable<Source> FetchSourcesWithReferences()

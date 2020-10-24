@@ -84,9 +84,8 @@ namespace DataDownloader.pubmed
 			{
 				// download pmids with references to trial registries, that
 				// have been revised since the cutoff date
-				//await CreatePMIDsListfromBanksAsync();
-				//IEnumerable<string> idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
-				IEnumerable<string> idstrings = pubmed_repo.FetchDistinctMissingPMIDStrings();
+				await CreatePMIDsListfromBanksAsync();
+				IEnumerable<string> idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
 				res = await DownloadPubmedEntriesAsync(idstrings);
 			}
 			if (args.type_id == 114 && args.filter_id == 10004)
