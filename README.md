@@ -1,18 +1,14 @@
 # DataDownloader
-Downloads data from sources to local files, OR in some cases identifies files / pages for later downloading of the full data.<br/>
-Sources are trial registries and data repositories.
+Downloads data from mdr data sources to local files, stored as XML.
 
-#### *N.B. Sources being added gradually - Yoda, BioLincc, EUCTR, ISRCTN at the moment, CTG, WHO, PubMed to be added*
-
-The mechanisms used include
+The functioning of the mdr begins with the creation of a local copy of all the source data. A folder is set up to receive the data, one per source, and the data dowenload process adds files to that folder. The local copy of the source data therefore grows gradually by accruing mnore and more data from the source, and at any time ithe folder holds all the relevant data from that source. Sources are trial registries and data repositories, and the mechanisms used include
 * Downloading XML files directly from a source's API, (e.g. for ClicalTrials.gov, PubMed)
-* Scraping web pages and generating the XML files (e.g. for ISRCTN, EUCTR, Yoda, BioLincc)
-* Downloading CSV files and converrting the data into XML files.
-
-The types of download are listed below. A particular source will have a default download type, dependent on the availability of an API, exposure of 'date last revised' etc. The default type can be overwritten by the input parameters.
-
-
-The format of the XML files created vary from source to source but represent the initial stage in the process of converting the source data into a consistent schema.
+* Scraping web pages and generating the XML files from the data obtained (e.g. for ISRCTN, EUCTR, Yoda, BioLincc)
+* Downloading CSV files and converting the data into XML files (e.g. for WHO ICTRP data).
+The format of the XML files created vary from source to source but represent the initial stage in the process of converting the source data into a consistent schema.<br/><br/>
+The program represents the first stage in the 4 stage MDR extraction process:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Download** => Harvest => Import => Aggregation<br/><br/>
+For a much more detailed explanation of the extraction process,and the MDR system as a whole, please see the project wiki (landing page at https://ecrin-mdr.online/index.php/Project_Overview).<br/>
 
 ### Parameters
 The system is currently a consiole app, and takes 3 parameters
