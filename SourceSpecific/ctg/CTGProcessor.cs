@@ -1,18 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using HtmlAgilityPack;
-using ScrapySharp.Extensions;
-using ScrapySharp.Network;
-using ScrapySharp.Html;
-using System.IO;
-using System.Web;
-using System.Globalization;
-using System.Xml;
-using System.Xml.XPath;
+﻿using System.Xml;
 
 namespace DataDownloader.ctg
 {
