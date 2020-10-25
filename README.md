@@ -1,7 +1,7 @@
 # DataDownloader
 Downloads data from mdr data sources to local files, stored as XML.
 
-The functioning of the mdr begins with the creation of a local copy of all the source data. A folder is set up to receive the data, one per source, and the data dowenload process adds files to that folder. The local copy of the source data therefore grows gradually by accruing mnore and more data from the source, and at any time ithe folder holds all the relevant data from that source. Sources are trial registries and data repositories, and the mechanisms used include
+The functioning of the mdr begins with the creation of a local copy of all the source data. A folder is set up to receive the data, one per source, and the data download process adds files to that folder. The download events are self contained and can take place independently of any further processing. The local copy of the source data simply grows with successive download events. At any point in time the folder holds *all* the data relevant to the mdr from its source, but because the date and time of each download is recorded later processing stages can select from that data store. Sources are trial registries and data repositories, and the download mechanisms used include
 * Downloading XML files directly from a source's API, (e.g. for ClicalTrials.gov, PubMed)
 * Scraping web pages and generating the XML files from the data obtained (e.g. for ISRCTN, EUCTR, Yoda, BioLincc)
 * Downloading CSV files and converting the data into XML files (e.g. for WHO ICTRP data).
