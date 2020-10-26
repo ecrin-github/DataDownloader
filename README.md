@@ -14,11 +14,11 @@ For a much more detailed explanation of the extraction process,and the MDR syste
 The system is a console app, and takes the following parameters:<br/>
 **-s**, followed by an integer: the id of the source to be downloaded, e.g. 100120 = ClinicalTrials.gov.<br/>
 **-t**, followed by an integer: the id of the type of fetch (or sometimes search) - see below for more details.<br/>
-**-f**, followed by a file path: the path should be that of the source fiule for those download types that require it.<br/>
+**-f**, followed by a file path: the path should be that of the source file for those download types that require it.<br/>
 **-d**, followed by a date, in the ISO yyyy-MM-dd format: the date should be the cut-off date for those download data types that require one.<br/>
 **-q**, followed by an integer: the integer id of a listed query for using within an API<br/>
 **-p**, followed by a string of comma delimited integers: the ids of the previous searches that should be used as the basis of this download.<br/>
-**-L**: a flag indicating that no logging should take place. Usefuil in some testing and development scenarios.<br/>
+**-L**: a flag indicating that no logging should take place. Useful in some testing and development scenarios.<br/>
 
 ### Download Types
 The range of parameters illustrate the need for the variety of approaches required to deal with the various types of source material. The types of download available are:
