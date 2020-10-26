@@ -88,6 +88,28 @@ The range of parameters illustrate the need for the variety of approaches requir
 205:	Search using MDR data (records located only)<br/>	
 *Identifies data or web pages, including their source URLs, where previously processed MDR data indicates it should be fetched, e.g. references in one source to another.	Requires query id*
 
+### Query types
+The types of wquery are likely to grow with time as tdifferent sources are used. At the moment the main use for these filters is with PubMed data. The current filter quesrties used are:
+
+### Overview
+
+### Logging
+Logging of data dowwnload is critical because itr provides the basis for orchestrating processes later on in the extractioon pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed) a **'data source record'** is established. This includes:
+* the source id, 
+* the object's own id, in the source data (e.g. a registry identifier), 
+* the URL of its record on the web - if it has one 
+* the local path where the XML file downloaded or created is stored
+* the datetime that the record was last revised, if available
+* a boolean indicating if the record is assumed complete (used when no revision date is available)
+* the download status - an integer - where 0 indicates found in a search but not yet (re)downloaded, and 2 indicates downloaded.
+* the id of the fetch / search event in which it was last downloaded / created
+* the date time of that fetch / search
+* the id of the harvest event in which it was last harvested
+* the date time of that harvest
+* the id of the import event in which it was last imported
+* the date time of that import
+In other words the source record provides, for each individual downloaded entity, a record of their current status in the system.
+During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the data was last fetched. 
 
 ### Provenance
 * Author: Steve Canham
