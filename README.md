@@ -29,34 +29,41 @@ would cause the system to download files from PubMed that have been revised sinc
 would cause the system to update the WHO linked data sources with data from the named csv file. The parameter strings:<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100126 -t 202 -d 2020-06-12<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100126 -t 132 -p 100054<br/>
-would first cause the data in ISRCTN that had been added or revised since the 12th of June to be identified (that search bhaving an id of 100054), and then cause that data to be downloaded, as a separate process. The second process does not need to be run immediately after the first.<br/><br/>
+would first cause the data in ISRCTN that had been added or revised since the 12th of June to be identified (that search having an id of 100054), and then cause that data to be downloaded, as a separate process. The second process does not need to be run immediately after the first.<br/><br/>
 A full list of download types and existing query filters is provided at the base of this ReadMe file.<br/>
 
-
 ### Overview
-The download process is dependent upon not just the fetch / search type specified and the other parameters but also on the source - because the process is highly source dependent.<br/>	
+The download process is dependent upon not just the fetch / search type specified and the other parameters but also on the source - the process is highly source dependent.<br/><br/>	
+The simplest downloads are those that simply take pre-existing XML files using API calls. This is the case for both ClinicalTrials.gov and PubMed. The files are not transformed in any way at this stage - simply downloaded and stored for later harvesting. Too many API calls in quick succession can lead to access being blocked (the hosts suspect a denial of service attack) so the download process is automatically paused at intervals. This greatly increases the time required but is required to prrevent blocked calls.<br/>	
 <br/>	
-The simplest ...
+A group of sources require active web scraping, usually starting from a search page, going to a details page for the main data for each study, and then often to further pages with specific details. Again, the scraping process usually needs to be "throttled down" with the inclusion of automatic pauses. The data is selected and processed to start its conversion to the ECRIN metadata standard form. The XML files that are created and stored by the scraping process are therefore usually straightforward to harvest into the database, as much of the preparatory work ihas been done during this download phase.<br/>	
 <br/>	
+The WHO ICTRP dataset is available as csv files, with each row corresponding to a study. The downlkoad process here consists of downloading the file (usuallly as weekly updates) and then running through the data to generate the XML files. Again the XML can be structured to partly match the ECRIN metadata schema, making later processing easier. In this case the XML files are distributed to different folders according to the ultimate (trial registry) source of the data, so that the mdr sees each registry as a separate source with a separate database. This is partly to help manage a large dataset, but mostly to more easily substitue the WHO data (which is relatively sparse and often requires extensive cleaning) with richer data scraped directly from the source registry.<br/>	
+<br/>	
+For large data sources the strategy is generally to use incremental downloads, on a weekly or even nightly basis, to keep the store of XML files as up to date as possible. For smaller sources it is possible and simpler to re-download the whole source. Unfortunately not all large sources havve easy mechanisms to identify new or revised data. The EUCTR for example does not publicly display this date, and is also a difficult web site to scrape (attempts are frequently blocked even with large gaps between scraping calls). TRo save re-scraping all the data each time, which can take a few days, the assumption is made that if a study meets certain criteria - e.g. is marked as 'completed' and has a completed results section - it is unlikely to change further. That is why one of the download options is to re-download only those files classified as 'assumed not yet completed'. The exact criteria for thios status would be source dependent.<br/>	
+<br/>	
+Even when incremental updating is relatively straightforward, however, the intention is to do a 100% download at least once a year, to ensure that the basic raw material from each registry is regularly 'rebased' to a valid state.
 
 ### Logging
-Logging of data dowwnload is critical because itr provides the basis for orchestrating processes later on in the extraction pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed) a **'data source record'** is established. This includes:
+Logging of data dowwnload is critical because it provides the basis for orchestrating processes later on in the extraction pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed). The **'data source record'** that is established includes:
 * the source id, 
-* the object's own id, in the source data (e.g. a registry identifier), 
-* the URL of its record on the web - if it has one 
+* the object's own id, in the source data (e.g. a registry identifier or PubMed id), 
+* the URL of its record on the web - if it has one. This applies even to data that is not collected directly from the web, such as from WHO csv files. 
 * the local path where the XML file downloaded or created is stored
 * the datetime that the record was last revised, if available
 * a boolean indicating if the record is assumed complete (used when no revision date is available)
 * the download status - an integer - where 0 indicates found in a search but not yet (re)downloaded, and 2 indicates downloaded.
 * the id of the fetch / search event in which it was last downloaded / created
-* the date time of that fetch / search
+* the date-time of that fetch / search
 * the id of the harvest event in which it was last harvested
-* the date time of that harvest
+* the date-time of that harvest
 * the id of the import event in which it was last imported
-* the date time of that import
+* the date-time of that import
 
-In other words the source record provides, for each individual downloaded entity, a record of their current status in the system.<br/>	
-During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the data was last fetched.<br/>	 
+In other words the 'source record' provides, for each individual downloaded entity, a record of their current status in the system.<br/>	
+During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the date-time the data was last fetched and the id of the fetch event. The date-time the data was last fetched is later incorporated into the data's "provenance string", even if the data proves to have been unchanged since the previous download. This date-time is also used during harvesting, when an option is to only harvest data that has been downloaded since the last import into the system (N.B. not since the last harvest).<br/>	 
+<br/>
+A summary record is also provided for each download and stored in the saf_events table in the monitor database (saf = search and fetch). This allows the system to interrogate the nature of the last download
 
 ### Provenance
 * Author: Steve Canham
@@ -135,6 +142,11 @@ The range of parameters illustrate the need for the variety of approaches requir
 *Identifies data or web pages, including their source URLs, where previously processed MDR data indicates it should be fetched, e.g. references in one source to another.	Requires query id*
 
 ### Query types
-The types of wquery are likely to grow with time as different sources are used. At the moment the main use for these filters is with PubMed data. The current filter quesrties used are:
+The types of wquery are likely to grow with time as different sources are used. At the moment the only use for these filters is with PubMed data. The current filter queries used are:
 
+10003	PubMed Registries: PubMed abstracts with references to any trial registry
+*Looks in PubMed with entries for any 'DataBank' that corresponds to a trial registry - loops through each registry in turn*
+
+10004	Pubmed-Study References	: Identifies PubMed references in Study sources that have not yet been downloaded
+*Carried out entirely within the system databases*
 
