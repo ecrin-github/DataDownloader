@@ -21,29 +21,29 @@ The system is a console app, and takes the following parameters:<br/>
 **-L**: a flag indicating that no logging should take place. Usefuil in some testing and development scenarios.<br/>
 
 ### Download Types
-The ranghe of parameters illustrate the need for the variety of approaches required to deal with the various types of source material. The types of download available are:
-101	All records (download)	
+The range of parameters illustrate the need for the variety of approaches required to deal with the various types of source material. The types of download available are:
+101	All records (download)<br/>	
 *Identifies and downloads XML files, one per record, from the entire data source. All available files are downloaded.*	
 
-102	All records (scrape)	
+102	All records (scrape)<br/>	
 *Scrapes data, creates XML files, one per record, from the entire data source. All available records are processed.*	
 
-103	All records (file)	
+103	All records (file)<br/>	
 *A local file (e.g. CSV file downloaded from WHO) used as the data source. Records transformed into local XML files. Requires file path*
 
-111	All new or revised records (download)	
+111	All new or revised records (download)	<br/>
 *Identifies and downloads XML files, one per each record that has been added new or revised since the given cutoff date, within the entire data source.	Requires cut off date*
 
-112	All new or revised records (scrape)	
+112	All new or revised records (scrape)<br/>	
 *Scrapes data and creates XML files, one per record, from  data that is new or revised since the given cutoff data, inspecting the entire data source. Requires cut off date*
 
-113	All new or revised records (file)	
+113	All new or revised records (file)<br/>	
 *Uses a downloaded file, with new and / or revised data since the last data fetch (usually as provided by the source). Local XML files created or amended. Requires file path*
 
-114	All new or revised records with a filter applied (download)	
+114	All new or revised records with a filter applied (download)<br/>	
 *Identifies and downloads XML files, one per each record that has been added new or revised since the given cutoff date, within a filtered source record set.	Requires cut off date, query id*
 
-121	Filtered records (download)	
+121	Filtered records (download)	<br/>
 *Identifies and downloads XML files, one per record, that meet specific search criteria (excluding revision date). The search type should be identified.	Requires query id
 
 122	Filtered records (scrape)	
@@ -52,39 +52,40 @@ The ranghe of parameters illustrate the need for the variety of approaches requi
 123	Filtered records (file)	
 *Uses a downloaded file, containing data that meets specific search criteria (excluding those based on revision date). Local XML files created or amended. The search type should be identified.	Requires file path, query id*
 
-131	Records from prior search (download)	
+131	Records from prior search (download)<br/>	
 *Downloads XML files, one per record, that have been previously identified by a search as requiring download. The search(es) should be identified.	Requires previous search id(s)*
 
-132	Records from prior search (scrape)	Scrapes data, and creates or amends XML files, one per record, that have been previously identified by a search as requiring download. *The search(es) should be identified.	Requires previous search id(s)*
+132	Records from prior search (scrape)<br/>	
+*Scrapes data, and creates or amends XML files, one per record, that have been previously identified by a search as requiring download. The search(es) should be identified.	Requires previous search id(s)*
 
-133	Records from prior search (file)	
+133	Records from prior search (file)<br/>	
 *Uses a downloaded file and extracts from it data that has previously been identified as required by a search. The search(es) should be identified.	requires file path, previous search id(s)*
 
-134	Records from prior search and new or revised records (download)	
+134	Records from prior search and new or revised records (download)	<br/>
 *Downloads XML files, one per record, that have been previously identified by a search as requiring download, and / or that have been revised or added since the cutoff date. The search(es) should be identified.	requires cut off date, previous search id(s)*
 
-141	Assumed incomplete records (download)	
+141	Assumed incomplete records (download)	<br/>
 *Identifies and downloads XML files, one per each record, that are assumed to be incomplete (using source specific criteria), within the entire data source.*
 
-142	Assumed incomplete records (scrape)	
+142	Assumed incomplete records (scrape)	<br/>
 *Scrapes data and creates XML files, one per record, from  data that is assumed to be incomplete (using source-specific criteria), inspecting the entire data source.	*
 
-143	Assumed incomplete records (file)	
+143	Assumed incomplete records (file)	<br/>
 *Uses a downloaded file, with data that is assumed to be incomplete (using source specific criteria). Local XML files created or amended.	Requires file path*
 
-201	Full search (records located only)	
+201	Full search (records located only)<br/>	
 *Identifies data or web page, including its source URL, across the entire data source, for later fetch.*	
 
-202	New or revised records (records located only)	
+202	New or revised records (records located only)<br/>	
 *Identifies data or web page, including its source URL, that meet the criteria of having been revised or added since the given cutoff date. For later fetch. Requires cut off date*
 
-203	Filtered search (records located only)	
+203	Filtered search (records located only)<br/>	
 *Identifies data or web page, including its source URL, that meet the criteria of a focused search, for later fetch. The search type should be specified.	Requires query id*
 
 204	New or revised records and filtered search  (records located only)	
 *Identifies data or web page, including its source URL, that meet the criteria of a focused search, AND which have also been revised or added since the given cutoff date, for later fetch.	Requires cut off date, query id*
 
-205	Search using MDR data (records located only)	
+205	Search using MDR data (records located only)<br/>	
 *Identifies data or web pages, including their source URLs, where previously processed MDR data indicates it should be fetched, e.g. references in one source to another.	Requires query id*
 
 
