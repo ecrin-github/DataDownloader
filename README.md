@@ -68,7 +68,7 @@ The range of parameters illustrate the need for the variety of approaches requir
 *Identifies and downloads XML files, one per each record, that are assumed to be incomplete (using source specific criteria), within the entire data source.*
 
 142:	Assumed incomplete records (scrape)	<br/>
-*Scrapes data and creates XML files, one per record, from  data that is assumed to be incomplete (using source-specific criteria), inspecting the entire data source.	*
+*Scrapes data and creates XML files, one per record, from  data that is assumed to be incomplete (using source-specific criteria), inspecting the entire data source.*
 
 143:	Assumed incomplete records (file)	<br/>
 *Uses a downloaded file, with data that is assumed to be incomplete (using source specific criteria). Local XML files created or amended.	Requires file path*
@@ -89,7 +89,7 @@ The range of parameters illustrate the need for the variety of approaches requir
 *Identifies data or web pages, including their source URLs, where previously processed MDR data indicates it should be fetched, e.g. references in one source to another.	Requires query id*
 
 ### Query types
-The types of wquery are likely to grow with time as tdifferent sources are used. At the moment the main use for these filters is with PubMed data. The current filter quesrties used are:
+The types of wquery are likely to grow with time as different sources are used. At the moment the main use for these filters is with PubMed data. The current filter quesrties used are:
 
 ### Overview
 
@@ -108,8 +108,9 @@ Logging of data dowwnload is critical because itr provides the basis for orchest
 * the date time of that harvest
 * the id of the import event in which it was last imported
 * the date time of that import
-In other words the source record provides, for each individual downloaded entity, a record of their current status in the system.
-During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the data was last fetched. 
+
+In other words the source record provides, for each individual downloaded entity, a record of their current status in the system.<br/>	
+During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the data was last fetched.<br/>	 
 
 ### Provenance
 * Author: Steve Canham
