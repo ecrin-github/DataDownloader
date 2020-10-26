@@ -92,9 +92,13 @@ The range of parameters illustrate the need for the variety of approaches requir
 The types of wquery are likely to grow with time as different sources are used. At the moment the main use for these filters is with PubMed data. The current filter quesrties used are:
 
 ### Overview
+The download process is dependent upon not just the fetch / search type specified and the other parameters but also on the source - because the process is highly source dependent.<br/>	
+<br/>	
+The simplest ...
+<br/>	
 
 ### Logging
-Logging of data dowwnload is critical because itr provides the basis for orchestrating processes later on in the extractioon pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed) a **'data source record'** is established. This includes:
+Logging of data dowwnload is critical because itr provides the basis for orchestrating processes later on in the extraction pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed) a **'data source record'** is established. This includes:
 * the source id, 
 * the object's own id, in the source data (e.g. a registry identifier), 
 * the URL of its record on the web - if it has one 
