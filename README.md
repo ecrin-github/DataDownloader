@@ -20,6 +20,17 @@ The system is a console app, and takes the following parameters:<br/>
 **-p**, followed by a string of comma delimited integers: the ids of the previous searches that should be used as the basis of this download.<br/>
 **-L**: a flag indicating that no logging should take place. Useful in some testing and development scenarios.<br/>
 
+Thus, a parameter string such as<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100120 -t 111 -d 2020-09-23<br/>
+will cause the system to download files from PubMed that have been revised or added since the 23rd September (the ClinicalTrials.gov API allows this sort of call to be made).The parameters<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100135 -t 114 -d 2020-07-14 -q 100003<br/>
+would cause the system to download files from PubMed that have been revisewd since the 14th July which also contain references to clinical trial registry ids, while the string<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100115 -t 113 -f "C:\data\who\update 20200813.csv"<br/>
+would cause the system to update the WHO linked data sources with data from the named csv file. The parameter strings:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100126 -t 202 -d 2020-06-12<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100126 -t 132 -p 100054<br/>
+would first cause the data in ISRCTN that had been added or revised since the 12th of June to be identified (that search bhaving an iod of 100054), and then cause that data to be downloaded, as a separate process. The second process does not need to be run immediately after the first.<br/>
+
 ### Download Types
 The range of parameters illustrate the need for the variety of approaches required to deal with the various types of source material. The types of download available, together with the three digit integer id of each, are:<br/>	<br/>	
 101:	All records (download)<br/>	
