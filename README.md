@@ -22,14 +22,49 @@ The system is a console app, and takes the following parameters:<br/>
 
 Thus, a parameter string such as<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100120 -t 111 -d 2020-09-23<br/>
-will cause the system to download files from PubMed that have been revised or added since the 23rd September (the ClinicalTrials.gov API allows this sort of call to be made).The parameters<br/>
+will cause the system to download files from PubMed that have been revised or added since the 23rd September (the ClinicalTrials.gov API allows this sort of call to be made). The parameters<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100135 -t 114 -d 2020-07-14 -q 100003<br/>
-would cause the system to download files from PubMed that have been revisewd since the 14th July which also contain references to clinical trial registry ids, while the string<br/>
+would cause the system to download files from PubMed that have been revised since the 14th July and which also contain references to clinical trial registry ids, while the string<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100115 -t 113 -f "C:\data\who\update 20200813.csv"<br/>
 would cause the system to update the WHO linked data sources with data from the named csv file. The parameter strings:<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100126 -t 202 -d 2020-06-12<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-s 100126 -t 132 -p 100054<br/>
-would first cause the data in ISRCTN that had been added or revised since the 12th of June to be identified (that search bhaving an iod of 100054), and then cause that data to be downloaded, as a separate process. The second process does not need to be run immediately after the first.<br/>
+would first cause the data in ISRCTN that had been added or revised since the 12th of June to be identified (that search bhaving an id of 100054), and then cause that data to be downloaded, as a separate process. The second process does not need to be run immediately after the first.<br/><br/>
+A full list of download types and existing query filters is provided at the base of this ReadMe file.<br/>
+
+
+### Overview
+The download process is dependent upon not just the fetch / search type specified and the other parameters but also on the source - because the process is highly source dependent.<br/>	
+<br/>	
+The simplest ...
+<br/>	
+
+### Logging
+Logging of data dowwnload is critical because itr provides the basis for orchestrating processes later on in the extraction pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed) a **'data source record'** is established. This includes:
+* the source id, 
+* the object's own id, in the source data (e.g. a registry identifier), 
+* the URL of its record on the web - if it has one 
+* the local path where the XML file downloaded or created is stored
+* the datetime that the record was last revised, if available
+* a boolean indicating if the record is assumed complete (used when no revision date is available)
+* the download status - an integer - where 0 indicates found in a search but not yet (re)downloaded, and 2 indicates downloaded.
+* the id of the fetch / search event in which it was last downloaded / created
+* the date time of that fetch / search
+* the id of the harvest event in which it was last harvested
+* the date time of that harvest
+* the id of the import event in which it was last imported
+* the date time of that import
+
+In other words the source record provides, for each individual downloaded entity, a record of their current status in the system.<br/>	
+During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the data was last fetched.<br/>	 
+
+### Provenance
+* Author: Steve Canham
+* Organisation: ECRIN (https://ecrin.org)
+* System: Clinical Research Metadata Repository (MDR)
+* Project: EOSC Life
+* Funding: EU H2020 programme, grant 824087
+
 
 ### Download Types
 The range of parameters illustrate the need for the variety of approaches required to deal with the various types of source material. The types of download available, together with the three digit integer id of each, are:<br/>	<br/>	
@@ -102,35 +137,4 @@ The range of parameters illustrate the need for the variety of approaches requir
 ### Query types
 The types of wquery are likely to grow with time as different sources are used. At the moment the main use for these filters is with PubMed data. The current filter quesrties used are:
 
-### Overview
-The download process is dependent upon not just the fetch / search type specified and the other parameters but also on the source - because the process is highly source dependent.<br/>	
-<br/>	
-The simplest ...
-<br/>	
-
-### Logging
-Logging of data dowwnload is critical because itr provides the basis for orchestrating processes later on in the extraction pathway. A record is created for each study that is downloaded (in study based sources like trial registries) or for each data object downloaded (for object based resources like PubMed) a **'data source record'** is established. This includes:
-* the source id, 
-* the object's own id, in the source data (e.g. a registry identifier), 
-* the URL of its record on the web - if it has one 
-* the local path where the XML file downloaded or created is stored
-* the datetime that the record was last revised, if available
-* a boolean indicating if the record is assumed complete (used when no revision date is available)
-* the download status - an integer - where 0 indicates found in a search but not yet (re)downloaded, and 2 indicates downloaded.
-* the id of the fetch / search event in which it was last downloaded / created
-* the date time of that fetch / search
-* the id of the harvest event in which it was last harvested
-* the date time of that harvest
-* the id of the import event in which it was last imported
-* the date time of that import
-
-In other words the source record provides, for each individual downloaded entity, a record of their current status in the system.<br/>	
-During a fetch / save event new studies (or objects for PubMed) will generate new records in this table. Existing records will update the records - possibly updating the date last revised as well as the data was last fetched.<br/>	 
-
-### Provenance
-* Author: Steve Canham
-* Organisation: ECRIN (https://ecrin.org)
-* System: Clinical Research Metadata Repository (MDR)
-* Project: EOSC Life
-* Funding: EU H2020 programme, grant 824087
 
