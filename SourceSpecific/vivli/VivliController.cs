@@ -33,6 +33,8 @@ namespace DataDownloader.vivli
 
         public void FetchURLDetails()
         {
+            VivliCopyHelpers vch = new VivliCopyHelpers();
+            
             // Set up initial study list
             // store it in pp table
 
@@ -53,11 +55,11 @@ namespace DataDownloader.vivli
                 WebPage web_page = browser.NavigateToPage(new Uri(URL));
 
                 List<VivliURL> page_study_list = processor.GetStudyInitialDetails(web_page, i);
-                vivli_repo.StoreRecs(CopyHelpers.api_url_copyhelper, page_study_list);
+                vivli_repo.StoreRecs(vch.api_url_copyhelper, page_study_list);
 
                 // Log to console and pause before the next page
 
-                StringHelpers.SendFeedback(i.ToString());
+                logging_repo.LogLine(i.ToString());
                 System.Threading.Thread.Sleep(1000);
             }
         }
@@ -77,12 +79,12 @@ namespace DataDownloader.vivli
 
             foreach (VivliURL s in all_study_list)
             {
-                processor.GetAndStoreStudyDetails(s, vivli_repo);
+                processor.GetAndStoreStudyDetails(s, vivli_repo, logging_repo);
 
                 // logging to go here
 
                 // write to console...
-                StringHelpers.SendFeedback(s.id.ToString() + ": " + s.vivli_url);
+                logging_repo.LogLine(s.id.ToString() + ": " + s.vivli_url);
 
                 // put a pause here if necessary
                 System.Threading.Thread.Sleep(800);

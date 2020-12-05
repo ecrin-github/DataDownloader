@@ -18,8 +18,9 @@ namespace DataDownloader
     public class Downloader
     {
         ScrapingBrowser browser;
+        LoggingDataLayer logging_repo;
 
-        public Downloader()
+        public Downloader(LoggingDataLayer _logging_repo)
         {
             // Set up browser for scraping.
 
@@ -27,35 +28,36 @@ namespace DataDownloader
             browser.AllowAutoRedirect = true;
             browser.AllowMetaRedirect = true;
             browser.Encoding = Encoding.UTF8;
+
+            logging_repo = _logging_repo;
         }
 
         public async Task RunDownloaderAsync(Args args, Source source)
         {
-            // Identify source type and location, destination folder
-            StringHelpers.SendHeader("Set up");
-            StringHelpers.SendFeedback("source_id is " + args.source_id.ToString());
-            StringHelpers.SendFeedback("type_id is " + args.type_id.ToString());
-            StringHelpers.SendFeedback("file_name is " + args.file_name);
-            StringHelpers.SendFeedback("cutoff_date is " + args.cutoff_date);
+            // Log parameters passed.
+
+            logging_repo.LogLine("****** DOWNLOAD ******");
+            logging_repo.LogHeader("Set up");
+            logging_repo.LogLine("source_id is " + args.source_id.ToString());
+            logging_repo.LogLine("type_id is " + args.type_id.ToString());
+            logging_repo.LogLine("file_name is " + args.file_name);
+            logging_repo.LogLine("cutoff_date is " + args.cutoff_date);
 
             string previous_saf_ids = null;
             if (args.previous_searches.Count() > 0)
             {
                 foreach (int i in args.previous_searches)
                 {
-                    StringHelpers.SendFeedback("previous_search is " + i.ToString());
+                    logging_repo.LogLine("previous_search is " + i.ToString());
                     previous_saf_ids += ", " + i.ToString();
                 }
                 previous_saf_ids = previous_saf_ids.Substring(2);
             }
-            StringHelpers.SendFeedback("no_Logging is " + args.no_logging);
+            logging_repo.LogLine("no_Logging is " + args.no_logging);
 
+            // Set up search and fetch record.
 
-            LoggingDataLayer logging_repo = new LoggingDataLayer();
             int saf_id = logging_repo.GetNextSearchFetchId();
-            string source_file = args.file_name;
-
-            // Set up search and fetch record
             SAFEvent saf = new SAFEvent(saf_id, source.id, args.type_id, args.filter_id, args.cutoff_date, previous_saf_ids);
 
             DownloadResult res = new DownloadResult();
@@ -94,7 +96,7 @@ namespace DataDownloader
                     }
                 case 100115:
                     {
-                        WHO_Controller who_controller = new WHO_Controller(source_file, saf_id, source, args, logging_repo);
+                        WHO_Controller who_controller = new WHO_Controller(saf_id, source, args, logging_repo);
                         res = who_controller.ProcessFile();
                         break;
                     }
@@ -129,6 +131,8 @@ namespace DataDownloader
                 // Store the saf log record.
                 logging_repo.InsertSAFEventRecord(saf);
             }
+            logging_repo.LogRes(res);
+            logging_repo.CloseLog();
         }
     }
 }

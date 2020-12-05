@@ -44,7 +44,7 @@ namespace DataDownloader.ctg
             // The args parameter needs to be inspected to ddetermine which.
 
             // If a full download the zip file can simply be expanded into the CTG folder area.
-            // It is then not necessaery to run this modujle at all.
+            // It is then not necessaery to run this module at all.
 
             // If an update the new files will be added, the amended files replaced, as necessary.
             // In some cases a search may be carried out to identify the files without downloading them.
@@ -67,60 +67,92 @@ namespace DataDownloader.ctg
 
                 // Do initial search 
 
-                string responseBody = await webClient.GetStringAsync(url);
-                XmlDocument xdoc = new XmlDocument();
-                xdoc.LoadXml(responseBody);
-                var num_found_string = xdoc.GetElementsByTagName("NStudiesFound")[0].InnerText;
-
-                if (Int32.TryParse(num_found_string, out int record_count))
+                string responseBody = await GetStringFromURLAsync(url);
+                if (responseBody != null)
                 {
-                    // Then go through the identified records 20 at a time
+                    XmlDocument xdoc = new XmlDocument();
+                    xdoc.LoadXml(responseBody);
+                    var num_found_string = xdoc.GetElementsByTagName("NStudiesFound")[0].InnerText;
 
-                    int loop_count = record_count % 20 == 0 ? record_count / 20 : (record_count / 20) + 1;
-                    for (int i = 0; i < loop_count; i++)
+                    if (Int32.TryParse(num_found_string, out int record_count))
                     {
-                        System.Threading.Thread.Sleep(800);
-                        min_rank = (i * 20) + 1;
-                        max_rank = (i * 20) + 20;
-                        end_url = "%2C+MAX%5D&min_rnk=" + min_rank.ToString() + "&max_rnk=" + max_rank.ToString() + "&fmt=xml";
-                        url = start_url + cut_off_params + end_url;
+                        // Then go through the identified records 20 at a time
 
-                        responseBody = await webClient.GetStringAsync(url);
-                        xdoc.LoadXml(responseBody);
-                        XmlNodeList full_studies = xdoc.GetElementsByTagName("FullStudy");
-
-                        // write each record in turn and update table in mon DB
-                        foreach (XmlNode full_study in full_studies)
+                        int loop_count = record_count % 20 == 0 ? record_count / 20 : (record_count / 20) + 1;
+                        for (int i = 0; i < loop_count; i++)
                         {
-                            // obtain basic information from the file
-                            // enough for the details to be filed in source_study_data table
-                            res.num_checked++;
-                            ctg_basics st = processor.ObtainBasicDetails(full_study);
+                            System.Threading.Thread.Sleep(800);
+                            min_rank = (i * 20) + 1;
+                            max_rank = (i * 20) + 20;
+                            end_url = "%2C+MAX%5D&min_rnk=" + min_rank.ToString() + "&max_rnk=" + max_rank.ToString() + "&fmt=xml";
+                            url = start_url + cut_off_params + end_url;
 
-                            // Then write out file
-                            string folder_path = file_base + st.file_path;
-                            if (!Directory.Exists(folder_path))
+                            responseBody = await GetStringFromURLAsync(url);
+                            if (responseBody != null)
                             {
-                                Directory.CreateDirectory(folder_path);
+                                xdoc.LoadXml(responseBody);
+                                XmlNodeList full_studies = xdoc.GetElementsByTagName("FullStudy");
+
+                                // write each record in turn and update table in mon DB.
+
+                                foreach (XmlNode full_study in full_studies)
+                                {
+                                    // Obtain basic information from the file - enough for 
+                                    // the details to be filed in source_study_data table.
+
+                                    res.num_checked++;
+                                    ctg_basics st = processor.ObtainBasicDetails(full_study, logging_repo);
+
+                                    // Then write out file.
+
+                                    string folder_path = file_base + st.file_path;
+                                    if (!Directory.Exists(folder_path))
+                                    {
+                                        Directory.CreateDirectory(folder_path);
+                                    }
+                                    string full_path = Path.Combine(folder_path, st.file_name);
+                                    XmlDocument filedoc = new XmlDocument();
+                                    filedoc.LoadXml(full_study.OuterXml);
+                                    filedoc.Save(full_path);
+
+                                    // Record details of updated or new record in source_study_data.
+
+                                    bool added = logging_repo.UpdateStudyDownloadLog(source.id, st.sd_sid, st.remote_url, saf_id,
+                                                                      st.last_updated, full_path);
+                                    res.num_downloaded++;
+                                    if (added) res.num_added++;
+                                }
+
+                                if (i % 5 == 0) logging_repo.LogLine((i * 20).ToString() + " files processed");
                             }
-                            string full_path = Path.Combine(folder_path, st.file_name);
-                            XmlDocument filedoc = new XmlDocument();
-                            filedoc.LoadXml(full_study.OuterXml);
-                            filedoc.Save(full_path);
 
-                            // Record details of updated or new record in source_study_data
-                            bool added = logging_repo.UpdateStudyDownloadLog(source.id, st.sd_sid, st.remote_url, saf_id,
-                                                              st.last_updated, full_path);
-                            res.num_downloaded++;
-                            if (added) res.num_added++;
+                            // for testing
+                            // if (i > 5) break;
+
                         }
-
-                        if (i % 5 == 0) StringHelpers.SendFeedback((i * 20).ToString() + " files processed");
                     }
                 }
             }
 
             return res;
         }
+
+
+        public async Task<string> GetStringFromURLAsync(string url)
+        {
+            try
+            {
+                string result =  await webClient.GetStringAsync(url);
+                return result;
+            }
+            catch (Exception e)
+            {
+                string problem = e.Message;
+                ExtractionNote note = new ExtractionNote(source.id, "", "URL fetch error", 1, 2, problem);
+                logging_repo.StoreExtractionNote(note);
+                return null;
+            }
+        }
+
     }
 }

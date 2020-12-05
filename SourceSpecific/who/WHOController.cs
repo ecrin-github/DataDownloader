@@ -16,9 +16,9 @@ namespace DataDownloader.who
         int source_id;
         LoggingDataLayer logging_repo;
 
-        public WHO_Controller(string _sourcefile, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+        public WHO_Controller(int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
         {
-            sourcefile = _sourcefile;
+            sourcefile = args.file_name;
             processor = new WHO_Processor();
             source = _source;
             file_base = source.local_folder;
@@ -43,6 +43,8 @@ namespace DataDownloader.who
             // Although the args parameter is passed in for consistency it is not used.
             // The file may be a 'full' set, or more commonly a weekly update file, but this
             // does not affect the file's processing.
+
+            DateHelpers dh = new DateHelpers(logging_repo);
 
             XmlSerializer writer = new XmlSerializer(typeof(WHORecord));
             DownloadResult res = new DownloadResult();
@@ -74,17 +76,14 @@ namespace DataDownloader.who
 
                             file_writer.WriteWHOSourcedFile(writer, r, full_path);
                             bool added = logging_repo.UpdateStudyDownloadLog(r.source_id, r.sd_sid, r.remote_url, saf_id,
-                                                               DateHelpers.FetchDateTimeFromISO(r.record_date), full_path);
+                                                               dh.FetchDateTimeFromISO(r.record_date), full_path);
                             res.num_downloaded++;
                             if (added) res.num_added++;
                         }
                         
-                        if (res.num_checked % 100 ==0) StringHelpers.SendFeedback(res.num_checked.ToString());
+                        if (res.num_checked % 100 ==0) logging_repo.LogLine(res.num_checked.ToString());
                     }
-                    
-                    StringHelpers.SendFeedback("WHO file, number of records checked = " + res.num_checked.ToString());
-                    StringHelpers.SendFeedback("WHO file, number of records downloaded = " + res.num_downloaded.ToString());
-                    StringHelpers.SendFeedback("WHO file, number of records added = " + res.num_added.ToString());
+
                 }
             }
 

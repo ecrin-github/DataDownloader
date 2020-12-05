@@ -2,9 +2,9 @@
 
 namespace DataDownloader
 {
-    public static class LoggingCopyHelper
+    public class LoggingCopyHelper
     {
-        public static PostgreSQLCopyHelper<StudyFileRecord> file_record_copyhelper =
+        public PostgreSQLCopyHelper<StudyFileRecord> file_record_copyhelper =
             new PostgreSQLCopyHelper<StudyFileRecord>("sf", "source_data_studies")
                 .MapInteger("source_id", x => x.source_id)
                 .MapVarchar("sd_id", x => x.sd_id)

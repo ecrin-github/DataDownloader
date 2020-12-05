@@ -69,7 +69,7 @@ namespace DataDownloader.pubmed
             source_id = source.id;
             file_writer = new FileWriter(source);
             
-            pubmed_repo = new PubMedDataLayer();
+            pubmed_repo = new PubMedDataLayer(logging_repo);
             webClient = new HttpClient();
             settings = new XmlWriterSettings();
             settings.Async = true;
@@ -204,14 +204,14 @@ namespace DataDownloader.pubmed
 
                                 string feedback = "Storing " + retmax.ToString() +
                                                   " records from " + start.ToString() + " in bank " + search_term;
-                                StringHelpers.SendFeedback(feedback);
+                                logging_repo.LogLine(feedback);
                             }
                         }
                     }
 
                     catch (HttpRequestException e)
                     {
-                        StringHelpers.SendError("In PubMed CreatePMIDsListfromBanksAsync(): " + e.Message);
+                        logging_repo.LogError("In PubMed CreatePMIDsListfromBanksAsync(): " + e.Message);
                     }
                 }
 
@@ -287,7 +287,7 @@ namespace DataDownloader.pubmed
                                 }
                             }
 
-                            if (res.num_checked % 100 == 0) StringHelpers.SendFeedback(res.num_checked.ToString());
+                            if (res.num_checked % 100 == 0) logging_repo.LogLine(res.num_checked.ToString());
                         }
                     }
 
@@ -299,7 +299,7 @@ namespace DataDownloader.pubmed
 
             catch (HttpRequestException e)
             {
-                StringHelpers.SendError("In PubMed DownloadPubmedEntriesUsingSourcesAsync(): " + e.Message);
+                logging_repo.LogError("In PubMed DownloadPubmedEntriesUsingSourcesAsync(): " + e.Message);
                 return res;
             }
         }

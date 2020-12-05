@@ -79,7 +79,7 @@ namespace DataDownloader.euctr
                             catch(Exception e)
                             {
                                 string eres = e.Message;
-                                StringHelpers.SendError("Problem in navigating to protocol details: " + eres + " id is " + s.eudract_id);
+                                logging_repo.LogError("Problem in navigating to protocol details: " + eres + " id is " + s.eudract_id);
                             }
                             if (detailsPage != null)
                             {
@@ -102,7 +102,7 @@ namespace DataDownloader.euctr
                                     catch (Exception e)
                                     {
                                         string eres = e.Message;
-                                        StringHelpers.SendError("Problem in navigating to result details: " + eres + " id is " + s.eudract_id);
+                                        logging_repo.LogError("Problem in navigating to result details: " + eres + " id is " + s.eudract_id);
                                     }
                                 }
                             }
@@ -130,7 +130,7 @@ namespace DataDownloader.euctr
                             System.Threading.Thread.Sleep(800);
                         }
 
-                        if (res.num_checked % 10 == 0) StringHelpers.SendFeedback("EUCTR pages checked: " + res.num_checked.ToString());
+                        if (res.num_checked % 10 == 0) logging_repo.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
                     }
                 }
             }

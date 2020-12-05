@@ -59,7 +59,7 @@ namespace DataDownloader.biolincc
 			{
 				// fetch the constructed study record
 				res.num_checked++;
-				BioLincc_Record st = processor.GetStudyDetails(browser, biolincc_repo, res.num_checked, row);
+				BioLincc_Record st = processor.GetStudyDetails(browser, biolincc_repo, res.num_checked, row, logging_repo);
 
 				if (st != null)
 				{
@@ -78,8 +78,8 @@ namespace DataDownloader.biolincc
 					System.Threading.Thread.Sleep(1000);
 				}
 
-				StringHelpers.SendFeedback("Biolincc files checked: " + res.num_checked.ToString());
-				StringHelpers.SendFeedback("Biolincc files downloaded: " + res.num_downloaded.ToString());
+				logging_repo.LogLine("Biolincc files checked: " + res.num_checked.ToString());
+				logging_repo.LogLine("Biolincc files downloaded: " + res.num_downloaded.ToString());
 			}
 
 			return res;

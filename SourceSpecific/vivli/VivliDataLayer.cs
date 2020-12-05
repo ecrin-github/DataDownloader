@@ -205,9 +205,9 @@ namespace DataDownloader.vivli
     }
 
 
-    public static class CopyHelpers
+    public class VivliCopyHelpers
     {
-        public static PostgreSQLCopyHelper<VivliURL> api_url_copyhelper =
+        public PostgreSQLCopyHelper<VivliURL> api_url_copyhelper =
             new PostgreSQLCopyHelper<VivliURL>("pp", "api_urls")
                 .MapInteger("id", x => x.id)
                 .MapVarchar("name", x => x.name)
@@ -216,7 +216,7 @@ namespace DataDownloader.vivli
                 .MapVarchar("vivli_url", x => x.vivli_url);
 
 
-        public static PostgreSQLCopyHelper<ObjectRecord> data_object_copyhelper =
+        public PostgreSQLCopyHelper<ObjectRecord> data_object_copyhelper =
             new PostgreSQLCopyHelper<ObjectRecord>("pp", "data_objects")
                 .MapInteger("id", x => x.id)
                 .MapInteger("package_id", x => x.package_id)

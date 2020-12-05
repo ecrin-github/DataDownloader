@@ -52,7 +52,7 @@ namespace DataDownloader.yoda
                 List<Summary> page_study_list = processor.GetStudyInitialDetails(homePage, i);
                 all_study_list.AddRange(page_study_list);
 
-                StringHelpers.SendFeedback(i.ToString());
+                logging_repo.LogLine(i.ToString());
                 System.Threading.Thread.Sleep(300);
             }
 
@@ -71,7 +71,7 @@ namespace DataDownloader.yoda
                 // Send the page off for processing
 
                 HtmlNode page = studyPage.Find("div", By.Class("region-content")).FirstOrDefault();
-                Yoda_Record st = processor.GetStudyDetails(browser, yoda_repo, page, sm);
+                Yoda_Record st = processor.GetStudyDetails(browser, yoda_repo, page, sm, logging_repo);
 
                 if (st != null)
                 {
@@ -90,7 +90,7 @@ namespace DataDownloader.yoda
                     System.Threading.Thread.Sleep(500);
                 }
 
-                StringHelpers.SendFeedback(res.num_checked.ToString());
+                logging_repo.LogLine(res.num_checked.ToString());
             }
 
             return res;

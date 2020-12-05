@@ -3,10 +3,18 @@ using System.Text.RegularExpressions;
 
 namespace DataDownloader
 {
-    public static class DateHelpers
+    public class DateHelpers
     {
+        LoggingDataLayer logging_repo;
+        StringHelpers sh;
 
-        public static int GetMonthAsInt(string month_name)
+        public DateHelpers(LoggingDataLayer _logging_repo)
+        {
+            logging_repo = _logging_repo;
+            sh = new StringHelpers(_logging_repo);
+        }
+
+        public int GetMonthAsInt(string month_name)
         {
             try
             {
@@ -19,7 +27,7 @@ namespace DataDownloader
         }
 
 
-        public static int GetMonthAs3AsInt(string month_abbrev)
+        public int GetMonthAs3AsInt(string month_abbrev)
         {
             try
             {
@@ -32,9 +40,9 @@ namespace DataDownloader
         }
 
 
-        public static string iso_date(string instring)
+        public string iso_date(string instring)
         {
-            string interim_string = StringHelpers.tidy_string(instring);
+            string interim_string = sh.tidy_string(instring);
             if (interim_string == null)
             {
                 return null;
@@ -114,7 +122,7 @@ namespace DataDownloader
         }
 
 
-        public static string GetTimeUnits(string instring)
+        public string GetTimeUnits(string instring)
         {
             string time_string = instring.ToLower();
             string time_units = "";
@@ -150,7 +158,7 @@ namespace DataDownloader
         }
 
 
-        public static DateTime? FetchDateTimeFromISO(string iso_string)
+        public DateTime? FetchDateTimeFromISO(string iso_string)
         {
             DateTime? dt = null;
             // iso_string assumed to be in format yyyy-mm-dd
@@ -163,7 +171,7 @@ namespace DataDownloader
         }
 
 
-        public static SplitDate GetDateParts(string dateString)
+        public SplitDate GetDateParts(string dateString)
         {
             // input date string is in the form of "<month name> day, year"
             // or in some cases in the form "<month name> year"
@@ -219,7 +227,7 @@ namespace DataDownloader
         }
 
 
-        public static DateTime? FetchDateTimeFromDateString(string dateString)
+        public DateTime? FetchDateTimeFromDateString(string dateString)
         {
             SplitDate sd = GetDateParts(dateString);
             if (sd.year != null && sd.month != null && sd.day != null)

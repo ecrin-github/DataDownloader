@@ -5,6 +5,7 @@ using Npgsql;
 using PostgreSQLCopyHelper;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace DataDownloader
@@ -14,7 +15,8 @@ namespace DataDownloader
         private string connString;
         private Source source;
         private string sql_file_select_string;
-
+        private string logfilepath;
+        private StreamWriter sw;
 
         /// <summary>
         /// Parameterless constructor is used to automatically build
@@ -37,12 +39,81 @@ namespace DataDownloader
             builder.Database = "mon";
             connString = builder.ConnectionString;
 
+            logfilepath = settings["logfilepath"];
+
             sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
             sql_file_select_string += " assume_complete, download_status, local_path, last_saf_id, last_downloaded, ";
             sql_file_select_string += " last_harvest_id, last_harvested, last_import_id, last_imported ";
         }
 
         public Source SourceParameters => source;
+
+        public void OpenLogFile()
+        {
+            string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
+                              .Replace("-", "").Replace(":", "").Replace("T", " ");
+            logfilepath += "DL " + source.database_name + " " + dt_string + ".log";
+            sw = new StreamWriter(logfilepath, true, System.Text.Encoding.UTF8);
+        }
+
+        public void LogLine(string message, string identifier = "")
+        {
+            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            sw.WriteLine(dt_string + message + identifier);
+        }
+
+        public void LogHeader(string message)
+        {
+            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            sw.WriteLine("");
+            sw.WriteLine(dt_string + "**** " + message + " ****");
+        }
+
+        public void LogError(string message)
+        {
+            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            sw.WriteLine("");
+            sw.WriteLine("+++++++++++++++++++++++++++++++++++++++");
+            sw.WriteLine(dt_string + "***ERROR*** " + message);
+            sw.WriteLine("+++++++++++++++++++++++++++++++++++++++");
+            sw.WriteLine("");
+        }
+
+        public void LogRes(DownloadResult res)
+        {
+            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            sw.WriteLine("");
+            sw.WriteLine(dt_string + "**** " + "Download Result" + " ****");
+            sw.WriteLine(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
+            sw.WriteLine(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
+            sw.WriteLine(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
+        }
+
+        public void CloseLog()
+        {
+            LogHeader("Closing Log");
+            sw.Close();
+        }
+
+
+        public DateTime? ObtainLastDownloadDate(int source_id)
+        {
+            using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
+            {
+                string sql_string = "select max(time_ended) from sf.saf_events ";
+                sql_string += " where source_id = " + source_id.ToString(); 
+                DateTime last_download_dt = Conn.ExecuteScalar<DateTime>(sql_string);
+                if (last_download_dt != null)
+                {
+                    return last_download_dt.Date;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
 
         public Source FetchSourceParameters(int source_id)
         {
@@ -180,7 +251,7 @@ namespace DataDownloader
             }
             catch (Exception e)
             {
-                StringHelpers.SendError("In UpdateStudyDownloadLogWithCompStatus: " + e.Message);
+                LogError("In UpdateStudyDownloadLogWithCompStatus: " + e.Message);
                 return false;
             }
         }
@@ -222,7 +293,7 @@ namespace DataDownloader
             }
             catch(Exception e)
             {
-                StringHelpers.SendError("In UpdateStudyDownloadLog: " + e.Message);
+                LogError("In UpdateStudyDownloadLog: " + e.Message);
                 return false;
             }
         }
@@ -287,7 +358,7 @@ namespace DataDownloader
         }
 
 
-        // Stores an 'extraction note', e.g. an unusual occurence found and
+        // Stores an 'extraction note', e.g. an unusual occurence or error found and
         // logged during the extraction, in the associated table.
 
         public void StoreExtractionNote(ExtractionNote ext_note)

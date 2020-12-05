@@ -13,9 +13,16 @@ using System.Text.Json;
 namespace DataDownloader
 {
 
-    public static class ScrapingHelpers
+    public class ScrapingHelpers
     {
-        public static SuppDoc FindSuppDoc(List<SuppDoc> supp_docs, string name)
+        LoggingDataLayer logging_repo;
+
+        public ScrapingHelpers(LoggingDataLayer _logging_repo)
+        {
+            logging_repo = _logging_repo;
+        }
+
+        public SuppDoc FindSuppDoc(List<SuppDoc> supp_docs, string name)
         {
             SuppDoc sd = null;
             foreach (SuppDoc s in supp_docs)
@@ -30,7 +37,7 @@ namespace DataDownloader
         }
 
 
-        public static string AttValue(string inputText, string attribute_name, HtmlNode entrySupp)
+        public string AttValue(string inputText, string attribute_name, HtmlNode entrySupp)
         {
             // drop the attribute name from the text
             string attValue = inputText.Replace(attribute_name, "");
@@ -46,7 +53,7 @@ namespace DataDownloader
         }
         
         
-        public static string GetPMIDFromNLM(ScrapingBrowser browser, string pmc_id)
+        public string GetPMIDFromNLM(ScrapingBrowser browser, string pmc_id)
         {
             var options = new JsonSerializerOptions
             {
@@ -74,7 +81,7 @@ namespace DataDownloader
         }
 
 
-        public static string  GetPMIDFromPage(ScrapingBrowser browser, string citation_link)
+        public string  GetPMIDFromPage(ScrapingBrowser browser, string citation_link)
         {
             string pmid = "";
             // construct url

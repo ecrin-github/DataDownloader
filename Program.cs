@@ -13,6 +13,7 @@ namespace DataDownloader
     {
         static async Task Main(string[] args)
         {
+            // check and process args
             var parsedArguments = Parser.Default.ParseArguments<Options>(args);
             await parsedArguments.WithParsedAsync(opts => RunOptionsAndReturnExitCodeAsync(opts));
             await parsedArguments.WithNotParsedAsync((errs) => HandleParseErrorAsync(errs));
@@ -30,18 +31,19 @@ namespace DataDownloader
             Source source = logging_repo.FetchSourceParameters(opts.source_id);
             if (source == null)
             {
-                StringHelpers.SendFeedback("Sorry - the first argument does not correspond to a known source");
+                // No log file available yet.
+                Console.WriteLine("Sorry - the first argument does not correspond to a known source");
                 return -1;
             }
             args.source_id = source.id;
-
+            logging_repo.OpenLogFile();
 
             // Check source fetch type id is valid. 
 
             SFType sf_type = logging_repo.FetchTypeParameters(opts.search_fetch_type_id);
             if (sf_type == null)
             {
-                StringHelpers.SendFeedback("Sorry - the type argument does not correspond to a known search / fetch type");
+                logging_repo.LogLine("Sorry - the type argument does not correspond to a known search / fetch type");
                 return -1;
             }
             args.type_id = sf_type.id;
@@ -63,11 +65,16 @@ namespace DataDownloader
                                     Int32.Parse(cutoff_date.Substring(8, 2)));
                     }
                 }
+                else
+                {
+                    // Try and find the last cut off date and use that
+                    args.cutoff_date = logging_repo.ObtainLastDownloadDate(source.id);
+                }
                 
                 if (args.cutoff_date == null)
                 {
-                    StringHelpers.SendFeedback("Sorry - this search fetch type requires a date"); ;
-                    StringHelpers.SendFeedback("in the format YYYY-MM-DD and this is missing");
+                    logging_repo.LogLine("Sorry - this search fetch type requires a date"); ;
+                    logging_repo.LogLine("in the format YYYY-MM-DD and this is missing");
                     return -1;
                 }
             }
@@ -80,8 +87,8 @@ namespace DataDownloader
             {
                 if (string.IsNullOrEmpty(args.file_name) || !File.Exists(args.file_name))
                 {
-                    StringHelpers.SendFeedback("Sorry - this search fetch type requires a file name"); ;
-                    StringHelpers.SendFeedback("and no valid file path and name is supplied");
+                    logging_repo.LogLine("Sorry - this search fetch type requires a file name"); ;
+                    logging_repo.LogLine("and no valid file path and name is supplied");
                     return -1;
                 }
             }
@@ -91,8 +98,8 @@ namespace DataDownloader
             {
                 if (args.filter_id == 0 || args.filter_id == null)
                 {
-                    StringHelpers.SendFeedback("Sorry - this search fetch type requires an integer referencing a search type"); ;
-                    StringHelpers.SendFeedback("and no valid file path and name is supplied");
+                    logging_repo.LogLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
+                    logging_repo.LogLine("and no valid file path and name is supplied");
                     return -1;
                 }
             }
@@ -103,8 +110,8 @@ namespace DataDownloader
             {
                 if (args.previous_searches.Count() == 0)
                 {
-                    StringHelpers.SendFeedback("Sorry - this search fetch type requires one or more"); 
-                    StringHelpers.SendFeedback("previous search-fetch ids and none were supplied supplied");
+                    logging_repo.LogLine("Sorry - this search fetch type requires one or more");
+                    logging_repo.LogLine("previous search-fetch ids and none were supplied supplied");
                     return -1;
                 }
             }
@@ -113,14 +120,20 @@ namespace DataDownloader
 
             args.no_logging = opts.no_logging;
 
-            Downloader dl = new Downloader();
+            // Create the main functional class and set it to work.
+
+            Downloader dl = new Downloader(logging_repo);
             await dl.RunDownloaderAsync(args, source);
             return 0;
         }
 
+
         static Task HandleParseErrorAsync(IEnumerable<Error> errs)
         {
-            // do nothing for the moment
+            foreach (Error e in errs)
+            {
+                Console.WriteLine(e.Tag.ToString());
+            }
             return Task.CompletedTask;
         }
 
@@ -149,7 +162,7 @@ namespace DataDownloader
         [Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
         public IEnumerable<int> previous_searches { get; set; }
 
-        [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.search_fetches")]
+        [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.saf_events")]
         public bool no_logging { get; set; }
 
     }

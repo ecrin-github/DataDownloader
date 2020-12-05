@@ -77,8 +77,10 @@ namespace DataDownloader.yoda
         }
 
 
-        public Yoda_Record GetStudyDetails(ScrapingBrowser browser, YodaDataLayer repo, HtmlNode page, Summary sm)
+        public Yoda_Record GetStudyDetails(ScrapingBrowser browser, YodaDataLayer repo, HtmlNode page, Summary sm, LoggingDataLayer logging_repo)
         {
+            ScrapingHelpers ch = new ScrapingHelpers(logging_repo);
+            
             Yoda_Record st = new Yoda_Record();
             List<SuppDoc> supp_docs = new List<SuppDoc>();
 
@@ -99,7 +101,7 @@ namespace DataDownloader.yoda
                 string report = "mismatch in study title - study id " + id.ToString();
                 report += "\npage title = " + yoda_title;
                 report += "\nstudy name = " + sm.study_name + "\n\n";
-                StringHelpers.SendFeedback(report);
+                logging_repo.LogLine(report);
             }
 
             st.registry_id = registry_id;
@@ -107,7 +109,7 @@ namespace DataDownloader.yoda
             st.yoda_title = yoda_title;
             st.remote_url = sm.details_link;
 
-            StringHelpers.SendFeedback(id.ToString());
+            logging_repo.LogLine(id.ToString());
 
             // study properties
             var propsBlock = page.CssSelect("#block-views-trial-details-block-2");
@@ -145,7 +147,7 @@ namespace DataDownloader.yoda
                         case "Mean/Median Age (Years)": st.mean_age = value; break;
                         default:
                             {
-                                StringHelpers.SendFeedback(label);
+                                logging_repo.LogLine(label);
                                 break;
                             }
                     }
@@ -202,7 +204,7 @@ namespace DataDownloader.yoda
                     string report = "mismatch in csr summary link - study id " + id.ToString();
                     report += "\nicon csr link = " + sd.url;
                     report += "\ntable csr link = " + sm.csr_link + "\n\n";
-                    StringHelpers.SendFeedback(report);
+                    logging_repo.LogLine(report);
                 }
             }
 
@@ -239,7 +241,7 @@ namespace DataDownloader.yoda
 
             if (dataLink != "" || dataComment != "")
             {
-                SuppDoc matchingSD = ScrapingHelpers.FindSuppDoc(supp_docs, "Data Definition Specification");
+                SuppDoc matchingSD = ch.FindSuppDoc(supp_docs, "Data Definition Specification");
                 if (matchingSD != null)
                 {
                     matchingSD.url = dataLink;
@@ -272,7 +274,7 @@ namespace DataDownloader.yoda
 
             if (crfLink != "" || crfComment != "")
             {
-                SuppDoc matchingSD = ScrapingHelpers.FindSuppDoc(supp_docs, "Annotated Case Report Form");
+                SuppDoc matchingSD = ch.FindSuppDoc(supp_docs, "Annotated Case Report Form");
                 if (matchingSD != null)
                 {
                     matchingSD.url = crfLink;
@@ -372,7 +374,7 @@ namespace DataDownloader.yoda
                 {
                     sponsor_org_id = 0;
                     sponsor_org = "";
-                    StringHelpers.SendFeedback("No sponsor found for " + yoda_title);
+                    logging_repo.LogLine("No sponsor found for " + yoda_title);
                 }
                 else
                 {
@@ -419,7 +421,7 @@ namespace DataDownloader.yoda
                     int pmc_pos = st.primary_citation_link.IndexOf("/pmc/articles/");
                     string pmc_id = st.primary_citation_link.Substring(pmc_pos + 14);
                     pmc_id = pmc_id.Replace("/", "");
-                    string pubmed_id = ScrapingHelpers.GetPMIDFromNLM(browser, pmc_id);
+                    string pubmed_id = ch.GetPMIDFromNLM(browser, pmc_id);
                     if (pubmed_id != null && pubmed_id != "")
                     {
                         study_references.Add(new Reference(pubmed_id));
@@ -429,7 +431,7 @@ namespace DataDownloader.yoda
                 else
                 {
                     // else try and retrieve from linking out to the pubmed page
-                    string pubmed_id = ScrapingHelpers.GetPMIDFromPage(browser, st.primary_citation_link);
+                    string pubmed_id = ch.GetPMIDFromPage(browser, st.primary_citation_link);
                     if (pubmed_id != null && pubmed_id != "")
                     {
                         study_references.Add(new Reference(pubmed_id));

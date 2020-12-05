@@ -121,7 +121,7 @@ namespace DataDownloader.isrctn
                             }
                         }
 
-                        if (res.num_checked % 10 == 0) StringHelpers.SendFeedback(res.num_checked.ToString() + " files downloaded");
+                        if (res.num_checked % 10 == 0) logging_repo.LogLine(res.num_checked.ToString() + " files downloaded");
                     }
 
                 }

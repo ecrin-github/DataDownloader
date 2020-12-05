@@ -4,8 +4,10 @@ namespace DataDownloader.ctg
 {
     public class CTG_Processor
     {
-        public ctg_basics ObtainBasicDetails(XmlNode fs)
+        public ctg_basics ObtainBasicDetails(XmlNode fs, LoggingDataLayer logging_repo)
         {
+            DateHelpers dh = new DateHelpers(logging_repo);
+
             ctg_basics ctg = new ctg_basics();
 
             // need the identity and status modules from the protocol section
@@ -17,7 +19,7 @@ namespace DataDownloader.ctg
             string last_updated = (fs.SelectSingleNode(protocol_path + last_updated_path)).InnerText;
 
             ctg.sd_sid = sd_sid;
-            ctg.last_updated = DateHelpers.FetchDateTimeFromDateString(last_updated);
+            ctg.last_updated = dh.FetchDateTimeFromDateString(last_updated);
             ctg.file_name = sd_sid + ".xml";
             ctg.file_path = sd_sid.Substring(0, 7) + "xxxx";
             ctg.remote_url = "https://clinicaltrials.gov/ct2/show/" + sd_sid;
