@@ -10,33 +10,43 @@ namespace DataDownloader.biolincc
 {
     public class BioLINCC_Processor
     {
-
-        public BioLincc_Record GetStudyDetails(ScrapingBrowser browser, BioLinccDataLayer repo, int seqnum, HtmlNode row, LoggingDataLayer logging_repo)
+        public BioLincc_Basics GetStudyBasics(HtmlNode row)
         {
 
-            ScrapingHelpers ch = new ScrapingHelpers(logging_repo);
-            DateHelpers dh = new DateHelpers(logging_repo);
-
-            BioLincc_Record st = new BioLincc_Record();
-
-            // get the basic information from the row
-            // passed from the summary studies table
-            HtmlNode[] cols = row.CssSelect("td").ToArray();
-
+            // get the basic information from the summary table row
             // 4 columns in each row, first of which has a link
-            // the second the acronym, the third the summarey of resources and 
+            // the second the acronym, the third the summary of resources and 
             // the fourth the collection type
-            string collection_type = cols[3].InnerText.Replace("\n", "").Replace("\r", "").Trim();
-            // only consider biolincc managed resources
-            if (collection_type == "Non-BioLINCC Resource") return null;
+            // Note the use of the acronym as the sd_sid 
+
+            HtmlNode[] cols = row.CssSelect("td").ToArray();
+            BioLincc_Basics bb = new BioLincc_Basics();
 
             HtmlNode link = cols[0].CssSelect("a").FirstOrDefault();
-            st.title = link.InnerText.Trim();
-            st.remote_url = "https://biolincc.nhlbi.nih.gov" + link.Attributes["href"].Value;
-            st.acronym = cols[1].InnerText.Replace("\n", "").Replace("\r", "").Trim();
-            st.resources_available = cols[2].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+            bb.title = link.InnerText.Trim();
+            bb.remote_url = "https://biolincc.nhlbi.nih.gov" + link.Attributes["href"].Value;
+            bb.acronym = cols[1].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+            bb.resources_available = cols[2].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+            bb.collection_type = cols[3].InnerText.Replace("\n", "").Replace("\r", "").Trim();
+            bb.sd_sid = bb.acronym.Replace("\\", "-").Replace("/", "-").Replace(".", "-");
 
-            // set up 
+            return bb;
+        }
+
+
+        public BioLincc_Record GetStudyDetails(BioLincc_Basics bb, ScrapingHelpers ch, BioLinccDataLayer repo, LoggingDataLayer logging_repo)
+        {
+            // First check the study main page can be reached
+            DateHelpers dh = new DateHelpers(logging_repo);
+            WebPage studyPage = ch.GetPage(bb.remote_url);
+            if (studyPage == null)
+            {
+                logging_repo.LogError("Attempt to access main BioLInnc study page for " + bb.acronym + " failed");
+                return null;
+            }
+
+            // Set up
+
             List<PrimaryDoc> primary_docs = new List<PrimaryDoc>();
             List<RegistryId> registry_ids = new List<RegistryId>();
             List<Resource> study_resources = new List<Resource>();
@@ -44,12 +54,10 @@ namespace DataDownloader.biolincc
             string nct_id = "";
             char[] splitter = { '(' };
 
-            // Start the extraction for this study
-            logging_repo.LogLine(seqnum.ToString() + ":" + st.acronym);
+            BioLincc_Record st = new BioLincc_Record(bb);
 
-            WebPage studyPage = browser.NavigateToPage(new Uri(st.remote_url));
+            // Main page components.
 
-            // main page components
             var main = studyPage.Find("div", By.Class("main"));
             var tables = main.CssSelect("div.study-box").ToArray();
             var table1 = tables[0];
@@ -58,7 +66,8 @@ namespace DataDownloader.biolincc
             var descriptive_paras = studyPage.Find("div", By.Id("study-info")).FirstOrDefault();
             var description = descriptive_paras.CssSelect("div.col-sm-12").FirstOrDefault();
 
-            // scan top table 
+            // Scan top table .
+
             HtmlNode[] entries = table1.CssSelect("p").ToArray();
             for (int i = 0; i < entries.Count(); i++)
             {
@@ -68,7 +77,7 @@ namespace DataDownloader.biolincc
                 string attribute_name = entryBold.InnerText.Trim();
                 string attribute_value = entries[i].InnerText;
 
-                if (attribute_name == "Accession Number") st.sd_sid = ch.AttValue(attribute_value, attribute_name, entrySupp);
+                if (attribute_name == "Accession Number") st.accession_number = ch.AttValue(attribute_value, attribute_name, entrySupp);
                 if (attribute_name == "Study Type")
                 {
                     string study_type = ch.AttValue(attribute_value, attribute_name, entrySupp);
@@ -244,7 +253,7 @@ namespace DataDownloader.biolincc
                                 {
                                     string pmc_id = attribute_value.Substring(pmc_pos + 14);
                                     pmc_id = pmc_id.Replace("/", "");
-                                    pubmed_id = ch.GetPMIDFromNLM(browser, pmc_id);
+                                    pubmed_id = ch.GetPMIDFromNLM(pmc_id);
                                 }
                             }
 
@@ -587,81 +596,95 @@ namespace DataDownloader.biolincc
             if (Links.Count > 0)
             {
                 string pubURL = "https://biolincc.nhlbi.nih.gov" + Links[0].url + "&page_size=200";
-                WebPage pubsPage = browser.NavigateToPage(new Uri(pubURL));
-                var pubTable = pubsPage.Find("div", By.Class("table-responsive"));
-                HtmlNode[] pubLinks = pubTable.CssSelect("td a").ToArray();
-                st.num_associated_papers = pubLinks.Count();
-
-                string pubNodeId = "";
-                foreach (HtmlNode pubnode in pubLinks)
+                WebPage pubsPage = ch.GetPage(pubURL);
+                if (pubsPage == null)
                 {
-                    pubNodeId = pubnode.Attributes["href"].Value;
-                    Links.Add(new Link(pubNodeId, "https://biolincc.nhlbi.nih.gov/publications/" + pubNodeId));
+                    logging_repo.LogError("Attempt to access study links page for " + bb.acronym + " failed");
                 }
-
-                // get the details of each listed publication
-                // Links[0] has the link to the publications page, so start at 1
-                string att_value = "";
-                for (int i = 1; i < Links.Count(); i++)
+                else
                 {
-                    // set up publication record
-                    AssocDoc pubdets = new AssocDoc(Links[i].attribute);
+                    var pubTable = pubsPage.Find("div", By.Class("table-responsive"));
+                    HtmlNode[] pubLinks = pubTable.CssSelect("td a").ToArray();
+                    st.num_associated_papers = pubLinks.Count();
 
-                    System.Threading.Thread.Sleep(600);
-                    WebPage pubsDetailsPage = browser.NavigateToPage(new Uri(Links[i].url));
-                    var mainData = pubsDetailsPage.Find("div", By.Class("main"));
-
-                    // Get the title
-                    HtmlNode pubTitle = mainData.CssSelect("h1 b").FirstOrDefault();
-                    pubdets.title = pubTitle.InnerText.Trim();
-
-                    // Other available details
-                    HtmlNode[] pubData = mainData.CssSelect("p").ToArray();
-
-                    foreach (HtmlNode node in pubData)
+                    string pubNodeId = "";
+                    foreach (HtmlNode pubnode in pubLinks)
                     {
-                        HtmlNode inBold = node.CssSelect("b").FirstOrDefault();
-                        if (inBold != null)
-                        {
-                            string attType = inBold.InnerText.Trim();
-
-                            att_value = node.InnerText.Replace(attType, "");
-                            att_value = att_value.Replace("\n", "").Replace("\r", "").Trim();
-
-                            if (attType.EndsWith(":")) attType = attType.Substring(0, attType.Count() - 1);
-
-                            switch (attType)
-                            {
-                                case "Pubmed ID":
-                                    {
-                                        pubdets.pubmed_id = att_value;
-                                        break;
-                                    }
-                                case "Pubmed Central ID":
-                                    {
-                                        pubdets.pmc_id = att_value;
-                                        break;
-                                    }
-                                case "Cite As":
-                                    {
-                                        pubdets.display_title = att_value;
-                                        break;
-                                    }
-                                case "Journal":
-                                    {
-                                        pubdets.journal = att_value;
-                                        break;
-                                    }
-                                case "Publication Date":
-                                    {
-                                        pubdets.pub_date = att_value;
-                                        break;
-                                    }
-                            }
-                        }
+                        pubNodeId = pubnode.Attributes["href"].Value;
+                        Links.Add(new Link(pubNodeId, "https://biolincc.nhlbi.nih.gov/publications/" + pubNodeId));
                     }
 
-                    assoc_docs.Add(pubdets);
+                    // get the details of each listed publication
+                    // Links[0] has the link to the publications page, so start at 1
+                    string att_value = "";
+                    for (int i = 1; i < Links.Count(); i++)
+                    {
+                        System.Threading.Thread.Sleep(600);
+                        WebPage pubsDetailsPage = ch.GetPage(Links[i].url);
+                        if (pubsDetailsPage == null)
+                        {
+                            logging_repo.LogError("Attempt to access specific study link details for " + bb.acronym + " failed");
+                        }
+                        else
+                        {  
+                            // set up publication record
+                            AssocDoc pubdets = new AssocDoc(Links[i].attribute);
+
+                            var mainData = pubsDetailsPage.Find("div", By.Class("main"));
+
+                            // Get the title
+                            HtmlNode pubTitle = mainData.CssSelect("h1 b").FirstOrDefault();
+                            pubdets.title = pubTitle.InnerText.Trim();
+
+                            // Other available details
+                            HtmlNode[] pubData = mainData.CssSelect("p").ToArray();
+
+                            foreach (HtmlNode node in pubData)
+                            {
+                                HtmlNode inBold = node.CssSelect("b").FirstOrDefault();
+                                if (inBold != null)
+                                {
+                                    string attType = inBold.InnerText.Trim();
+
+                                    att_value = node.InnerText.Replace(attType, "");
+                                    att_value = att_value.Replace("\n", "").Replace("\r", "").Trim();
+
+                                    if (attType.EndsWith(":")) attType = attType.Substring(0, attType.Count() - 1);
+
+                                    switch (attType)
+                                    {
+                                        case "Pubmed ID":
+                                            {
+                                                pubdets.pubmed_id = att_value;
+                                                break;
+                                            }
+                                        case "Pubmed Central ID":
+                                            {
+                                                pubdets.pmc_id = att_value;
+                                                break;
+                                            }
+                                        case "Cite As":
+                                            {
+                                                pubdets.display_title = att_value;
+                                                break;
+                                            }
+                                        case "Journal":
+                                            {
+                                                pubdets.journal = att_value;
+                                                break;
+                                            }
+                                        case "Publication Date":
+                                            {
+                                                pubdets.pub_date = att_value;
+                                                break;
+                                            }
+                                    }
+                                }
+                            }
+
+                            assoc_docs.Add(pubdets);
+                        }
+                    }
                 }
             }
 

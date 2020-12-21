@@ -19,7 +19,9 @@ namespace DataDownloader.isrctn
         int saf_id;
         int source_id;
         LoggingDataLayer logging_repo;
-        string cut_off_date;
+        DateTime? cut_off_date;
+        string cut_off_date_string;
+        int? days_ago;
 
         public ISRCTN_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
         {
@@ -31,7 +33,9 @@ namespace DataDownloader.isrctn
             saf_id = _saf_id;
             file_writer = new FileWriter(source);
             logging_repo = _logging_repo;
-            cut_off_date = args.cutoff_date?.ToString("yyyy-MM-dd");
+            cut_off_date = args.cutoff_date;
+            cut_off_date_string = args.cutoff_date?.ToString("yyyy-MM-dd");
+            days_ago = args.skip_recent_days;
         }
 
         // Get the number of records required and set up the loop
@@ -41,15 +45,16 @@ namespace DataDownloader.isrctn
             // Construct the initial search string
             DownloadResult res = new DownloadResult();
             XmlSerializer writer = new XmlSerializer(typeof(ISCTRN_Record));
+            ScrapingHelpers ch = new ScrapingHelpers(browser, logging_repo);
 
             string part1_of_url = "http://www.isrctn.com/search?pageSize=100&sort=&page=";
             string initial_page_num = "1";
             string part2_of_url = "&q=&filters=GT+lastEdited%3A";
             string end_of_url = "T00%3A00%3A00.000Z&searchType=advanced-search";
 
-            string url = part1_of_url + initial_page_num + part2_of_url + cut_off_date + end_of_url;
+            string url = part1_of_url + initial_page_num + part2_of_url + cut_off_date_string + end_of_url;
 
-            WebPage homePage = browser.NavigateToPage(new Uri(url));
+            WebPage homePage = ch.GetPage(url);
             int rec_num = processor.GetListLength(homePage);
             if (rec_num != 0)
             {
@@ -59,8 +64,8 @@ namespace DataDownloader.isrctn
                 {
                     // Obtain and go through each page of 100 entries.
 
-                    homePage = browser.NavigateToPage(new Uri(part1_of_url + i.ToString() + 
-                                                      part2_of_url + cut_off_date + end_of_url));
+                    homePage = ch.GetPage(part1_of_url + i.ToString() + 
+                                          part2_of_url + cut_off_date_string + end_of_url);
 
                     int n = 0;
                     var pageContent = homePage.Find("ul", By.Class("ResultsList"));
@@ -72,7 +77,6 @@ namespace DataDownloader.isrctn
 
                     foreach (HtmlNode row in studyRows)
                     {
-                        
                         HtmlNode main = row.CssSelect(".ResultsList_item_main").FirstOrDefault();
                         HtmlNode title = main.CssSelect(".ResultsList_item_title a").FirstOrDefault();
                         if (title != null)
@@ -84,14 +88,23 @@ namespace DataDownloader.isrctn
 
                                 colonPos = titleString.IndexOf(":");
                                 ISRCTNNumber = titleString.Substring(0, colonPos - 1).Trim();
-                               
-                                n++;
                                 res.num_checked++;
 
-                                // only get details if not already downloaded
+                                // record has been added or revised since the cutoff date (normally the last download), 
+                                // but...should it be downloaded
+                                bool do_download = false;
                                 StudyFileRecord sfr = logging_repo.FetchStudyFileRecord(ISRCTNNumber, source_id);
-                                if (sfr == null || sfr.last_downloaded < new DateTime(2020, 10, 04))
+                                if (sfr == null)
                                 {
+                                    do_download = true;  // record does not exist
+                                }
+                                else if (days_ago == null || !logging_repo.Downloaded_recently(source_id, ISRCTNNumber, (int)days_ago))
+                                {
+                                    // if record already within last days_ago today, ignore it... (may happen if re-running after an error)
+                                    do_download = true;  // record has not been downloaded recently
+                                }
+                                if (do_download)
+                                { 
                                     remote_link = "https://www.isrctn.com/" + ISRCTNNumber;
 
                                     // obtain details of that study
@@ -101,7 +114,7 @@ namespace DataDownloader.isrctn
                                         System.Threading.Thread.Sleep(2000);
                                     }
                                     ISCTRN_Record st = new ISCTRN_Record();
-                                    WebPage detailsPage = browser.NavigateToPage(new Uri(remote_link));
+                                    WebPage detailsPage = ch.GetPage(remote_link);
                                     st = processor.GetFullDetails(detailsPage, ISRCTNNumber);
 
                                     // Write out study record as XML.

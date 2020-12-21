@@ -15,7 +15,8 @@ namespace DataDownloader
         private string connString;
         private Source source;
         private string sql_file_select_string;
-        private string logfilepath;
+        private string logfile_startofpath;
+        private string logfile_path;
         private StreamWriter sw;
 
         /// <summary>
@@ -39,7 +40,8 @@ namespace DataDownloader
             builder.Database = "mon";
             connString = builder.ConnectionString;
 
-            logfilepath = settings["logfilepath"];
+            logfile_startofpath = settings["logfilepath"];
+
 
             sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
             sql_file_select_string += " assume_complete, download_status, local_path, last_saf_id, last_downloaded, ";
@@ -52,47 +54,88 @@ namespace DataDownloader
         {
             string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
                               .Replace("-", "").Replace(":", "").Replace("T", " ");
-            logfilepath += "DL " + source.database_name + " " + dt_string + ".log";
-            sw = new StreamWriter(logfilepath, true, System.Text.Encoding.UTF8);
+            logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string + ".log";
+            sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
         }
 
         public void LogLine(string message, string identifier = "")
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            sw.WriteLine(dt_string + message + identifier);
+            string feedback = dt_string + message + identifier;
+            Transmit(feedback);
         }
 
         public void LogHeader(string message)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            sw.WriteLine("");
-            sw.WriteLine(dt_string + "**** " + message + " ****");
+            string header = dt_string + "**** " + message + " ****";
+           Transmit("");
+            Transmit(header);
         }
 
         public void LogError(string message)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            sw.WriteLine("");
-            sw.WriteLine("+++++++++++++++++++++++++++++++++++++++");
-            sw.WriteLine(dt_string + "***ERROR*** " + message);
-            sw.WriteLine("+++++++++++++++++++++++++++++++++++++++");
-            sw.WriteLine("");
+            string error_message = dt_string + "***ERROR*** " + message;
+            Transmit("");
+            Transmit("+++++++++++++++++++++++++++++++++++++++");
+            Transmit(error_message);
+            Transmit("+++++++++++++++++++++++++++++++++++++++");
+            Transmit("");
         }
 
         public void LogRes(DownloadResult res)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            sw.WriteLine("");
-            sw.WriteLine(dt_string + "**** " + "Download Result" + " ****");
-            sw.WriteLine(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
-            sw.WriteLine(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
-            sw.WriteLine(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
+            Transmit("");
+            Transmit(dt_string + "**** " + "Download Result" + " ****");
+            Transmit(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
+            Transmit(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
+            Transmit(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
         }
 
         public void CloseLog()
         {
             LogHeader("Closing Log");
+            sw.Flush();
             sw.Close();
+        }
+
+        private void Transmit(string message)
+        {
+            sw.WriteLine(message);
+            Console.WriteLine(message);
+        }
+
+        public string LogArgsParameters(Args args)
+        {
+
+            LogLine("****** DOWNLOAD ******");
+            LogHeader("Set up");
+            LogLine("source_id is " + args.source_id.ToString());
+            LogLine("type_id is " + args.type_id.ToString());
+            string file_name = (args.file_name == null) ? " was not provided" : " is " + args.file_name;
+            LogLine("file_name" + file_name);
+            string cutoff_date = (args.cutoff_date == null) ? " was not provided" : " is " + ((DateTime)args.cutoff_date).ToShortDateString();
+            LogLine("cutoff_date" + cutoff_date);
+            string filter_id = (args.filter_id == null) ? " was not provided" : " is " + args.filter_id.ToString();
+            LogLine("filter" + filter_id);
+            string ignore_recent_days = (args.skip_recent_days == null) ? " was not provided" : " is " + args.skip_recent_days.ToString();
+            LogLine("ignore recent downloads parameter" + ignore_recent_days);
+
+            string previous_saf_ids = "";
+            if (args.previous_searches.Count() > 0)
+            {
+                foreach (int i in args.previous_searches)
+                {
+                    LogLine("previous_search is " + i.ToString());
+                    previous_saf_ids += ", " + i.ToString();
+                }
+                previous_saf_ids = previous_saf_ids.Substring(2);
+            }
+            string no_logging = (args.filter_id == null) ? " was not provided" : " is " + args.no_logging;
+            LogLine("no_Logging" + no_logging);
+            return previous_saf_ids;
         }
 
 
@@ -333,6 +376,18 @@ namespace DataDownloader
             }
 
             return added;
+        }
+
+        public bool Downloaded_recently(int source_id, string sd_sid, int days_ago)
+        {
+            string sql_string = @"select id from sf.source_data_studies
+                    where last_downloaded::date >= now()::date - " + days_ago.ToString() + @"
+                    and sd_id = '" + sd_sid + @"'
+                    and source_id = " + source_id.ToString();
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                return conn.Query<int>(sql_string).FirstOrDefault() > 0 ? true : false;
+            }
         }
 
 

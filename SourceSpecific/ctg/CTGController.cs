@@ -30,7 +30,7 @@ namespace DataDownloader.ctg
             logging_repo = _logging_repo;
             cutoff_date = args.cutoff_date;
 
-            webClient = new HttpClient();
+            //webClient = new HttpClient();
             settings = new XmlWriterSettings();
             settings.Async = true;
             settings.Encoding = System.Text.Encoding.UTF8;
@@ -49,6 +49,7 @@ namespace DataDownloader.ctg
             // If an update the new files will be added, the amended files replaced, as necessary.
             // In some cases a search may be carried out to identify the files without downloading them.
             DownloadResult res = new DownloadResult();
+            ScrapingHelpers ch = new ScrapingHelpers(logging_repo);
 
             if (cutoff_date != null)
             {
@@ -67,7 +68,7 @@ namespace DataDownloader.ctg
 
                 // Do initial search 
 
-                string responseBody = await GetStringFromURLAsync(url);
+                string responseBody = await ch.GetStringFromURLAsync(url);
                 if (responseBody != null)
                 {
                     XmlDocument xdoc = new XmlDocument();
@@ -87,7 +88,7 @@ namespace DataDownloader.ctg
                             end_url = "%2C+MAX%5D&min_rnk=" + min_rank.ToString() + "&max_rnk=" + max_rank.ToString() + "&fmt=xml";
                             url = start_url + cut_off_params + end_url;
 
-                            responseBody = await GetStringFromURLAsync(url);
+                            responseBody = await ch.GetStringFromURLAsync(url);
                             if (responseBody != null)
                             {
                                 xdoc.LoadXml(responseBody);
@@ -135,23 +136,6 @@ namespace DataDownloader.ctg
             }
 
             return res;
-        }
-
-
-        public async Task<string> GetStringFromURLAsync(string url)
-        {
-            try
-            {
-                string result =  await webClient.GetStringAsync(url);
-                return result;
-            }
-            catch (Exception e)
-            {
-                string problem = e.Message;
-                ExtractionNote note = new ExtractionNote(source.id, "", "URL fetch error", 1, 2, problem);
-                logging_repo.StoreExtractionNote(note);
-                return null;
-            }
         }
 
     }

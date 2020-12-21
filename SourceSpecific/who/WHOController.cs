@@ -1,4 +1,5 @@
 ﻿using CsvHelper;
+using CsvHelper.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Xml.Serialization;
@@ -53,8 +54,9 @@ namespace DataDownloader.who
             {
                 using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
-                    csv.Configuration.HasHeaderRecord = false;
+                    csv.Configuration.HasHeaderRecord = true;
                     var records = csv.GetRecords<WHO_SourceRecord>();
+                    logging_repo.LogLine(" Rows loaded into WHO record structure");
 
                     // Consider each study in turn.
 
@@ -83,10 +85,8 @@ namespace DataDownloader.who
                         
                         if (res.num_checked % 100 ==0) logging_repo.LogLine(res.num_checked.ToString());
                     }
-
                 }
             }
-
             return res;
         }
     }

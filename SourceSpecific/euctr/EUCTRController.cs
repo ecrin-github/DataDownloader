@@ -17,7 +17,7 @@ namespace DataDownloader.euctr
         int source_id;
         int sf_type_id;
         LoggingDataLayer logging_repo;
-
+        int? days_ago;
 
         public EUCTR_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
         {
@@ -30,6 +30,7 @@ namespace DataDownloader.euctr
             file_writer = new FileWriter(source);
             logging_repo = _logging_repo;
             sf_type_id = args.type_id;
+            days_ago = args.skip_recent_days;
         }
 
 
@@ -39,71 +40,75 @@ namespace DataDownloader.euctr
             // if sf_type = 141, 142, 143 (normally 142 here) only download files 
             // not already marked as 'complete' - i.e. very unlikely to change. This is 
             // signalled by including the flag in the call to the processor routine.
-            
+
+            ScrapingHelpers ch = new ScrapingHelpers(browser, logging_repo);
             bool incomplete_only = (sf_type_id == 141 || sf_type_id == 142 || sf_type_id == 143);
             DownloadResult res = new DownloadResult();
             XmlSerializer writer = new XmlSerializer(typeof(EUCTR_Record));
             string baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=&page=";
 
-            WebPage homePage = browser.NavigateToPage(new Uri(baseURL));
-            int rec_num = processor.GetListLength(homePage);
+            WebPage searchPage = browser.NavigateToPage(new Uri(baseURL));
+            int rec_num = processor.GetListLength(searchPage);
             if (rec_num != 0)
             {
                 int loop_limit = rec_num % 20 == 0 ? rec_num / 20 : (rec_num / 20) + 1;
-                for (int i = 714; i <= loop_limit; i++)
+                for (int i = 0; i <= loop_limit; i++)
                 {
                     // Go to the summary page indicated by current value of i
                     // Each page has up to 20 listed studies.
                     // Once on that page each of the studies is processed in turn...
-                    homePage = browser.NavigateToPage(new Uri(baseURL + i.ToString()));
-                    List<EUCTR_Summmary> summaries = processor.GetStudySuummaries(homePage);
+                    searchPage = ch.GetPage(baseURL + i.ToString());
+                    List<EUCTR_Summmary> summaries = processor.GetStudySuummaries(searchPage);
 
                     foreach (EUCTR_Summmary s in summaries)
                     {
                         // Check the euctr_id (sd_id) is not 'assumed complete' if only incomplete r
                         // records are being considered; only proceed if this is the case
-
+                        bool do_download = false;
                         res.num_checked++;
                         StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(s.eudract_id, source_id);
+                        if (file_record == null)
+                        {
+                            do_download = true;  // record does not exist
+                        }
+                        else if (days_ago == null || !logging_repo.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
+                        {
+                            // if record already within last days_ago, ignore it... (may happen if re-running after an error)
+                            do_download = true;  // record has not been downloaded recently
+                        }
+                        else if (!incomplete_only || file_record.assume_complete != true)
+                        {
+                            do_download = true; // download if not assumed complete, or incomplete only flag does not apply
+                        }
 
-                        if (!incomplete_only || file_record == null || file_record.assume_complete != true)
+                        if (do_download)
                         {
                             // transfer summary details to the main EUCTR_record object
                             EUCTR_Record st = new EUCTR_Record(s);
 
-                            WebPage detailsPage = null;
-                            try
-                            {
-                                detailsPage = browser.NavigateToPage(new Uri(st.details_url));
-                            }
-                            catch(Exception e)
-                            {
-                                string eres = e.Message;
-                                logging_repo.LogError("Problem in navigating to protocol details: " + eres + " id is " + s.eudract_id);
-                            }
+                            WebPage detailsPage = ch.GetPage(st.details_url);
                             if (detailsPage != null)
                             {
                                 st = processor.ExtractProtocolDetails(st, detailsPage);
                             }
-
+                            else
+                            {
+                                logging_repo.LogError("Problem in navigating to protocol details, id is " + s.eudract_id);
+                            }
+                            
                             // Get results details
 
                             if (st.results_url != null)
                             {
                                 System.Threading.Thread.Sleep(800);
-                                WebPage resultsPage = browser.NavigateToPage(new Uri(st.results_url));
-
+                                WebPage resultsPage = ch.GetPage(st.results_url);
                                 if (resultsPage != null)
+                                { 
+                                    st = processor.ExtractResultDetails(st, resultsPage);
+                                }
+                                else
                                 {
-                                    try
-                                    {
-                                        st = processor.ExtractResultDetails(st, resultsPage);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        string eres = e.Message;
-                                        logging_repo.LogError("Problem in navigating to result details: " + eres + " id is " + s.eudract_id);
-                                    }
+                                    logging_repo.LogError("Problem in navigating to result details, id is " + s.eudract_id);
                                 }
                             }
 

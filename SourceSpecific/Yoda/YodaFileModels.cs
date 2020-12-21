@@ -32,12 +32,27 @@ namespace DataDownloader.yoda
         public List<Identifier> study_identifiers { get; set; }
         public List<Title> study_titles { get; set; }
         public List<Reference> study_references { get; set; }
+
+        public Yoda_Record()
+        {
+        }
+
+        public Yoda_Record(Summary sm)
+        {
+            sd_sid = sm.sd_sid;
+            registry_id = sm.registry_id ?? "";
+            yoda_title = sm.study_name;
+            is_yoda_only = (registry_id.StartsWith("NCT") || registry_id.StartsWith("ISRCTN")) ? false : true;
+            remote_url = sm.details_link;
+        }
+
     }
+
 
     public class Summary
     {
-        public int id { get; set; }
-        public string nct_number { get; set; }
+        public string sd_sid { get; set; }
+        public string registry_id { get; set; }
         public string generic_name { get; set; }
         public string study_name { get; set; }
         public string details_link { get; set; }

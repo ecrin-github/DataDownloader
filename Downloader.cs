@@ -34,29 +34,8 @@ namespace DataDownloader
 
         public async Task RunDownloaderAsync(Args args, Source source)
         {
-            // Log parameters passed.
-
-            logging_repo.LogLine("****** DOWNLOAD ******");
-            logging_repo.LogHeader("Set up");
-            logging_repo.LogLine("source_id is " + args.source_id.ToString());
-            logging_repo.LogLine("type_id is " + args.type_id.ToString());
-            logging_repo.LogLine("file_name is " + args.file_name);
-            logging_repo.LogLine("cutoff_date is " + args.cutoff_date);
-
-            string previous_saf_ids = null;
-            if (args.previous_searches.Count() > 0)
-            {
-                foreach (int i in args.previous_searches)
-                {
-                    logging_repo.LogLine("previous_search is " + i.ToString());
-                    previous_saf_ids += ", " + i.ToString();
-                }
-                previous_saf_ids = previous_saf_ids.Substring(2);
-            }
-            logging_repo.LogLine("no_Logging is " + args.no_logging);
-
-            // Set up search and fetch record.
-
+            // Log parameters and set up search and fetch record.
+            string previous_saf_ids = logging_repo.LogArgsParameters(args);
             int saf_id = logging_repo.GetNextSearchFetchId();
             SAFEvent saf = new SAFEvent(saf_id, source.id, args.type_id, args.filter_id, args.cutoff_date, previous_saf_ids);
 
@@ -123,15 +102,18 @@ namespace DataDownloader
             // tidy up and ensure logging up to date
 
             saf.time_ended = DateTime.Now;
-            saf.num_records_checked = res.num_checked;
-            saf.num_records_downloaded = res.num_downloaded;
-            saf.num_records_added = res.num_added;
-            if (!args.no_logging)
+            if (res != null)
+            {
+                saf.num_records_checked = res.num_checked;
+                saf.num_records_downloaded = res.num_downloaded;
+                saf.num_records_added = res.num_added;
+                logging_repo.LogRes(res);
+            }
+            if (args.no_logging == null || args.no_logging == false)
             {
                 // Store the saf log record.
                 logging_repo.InsertSAFEventRecord(saf);
             }
-            logging_repo.LogRes(res);
             logging_repo.CloseLog();
         }
     }

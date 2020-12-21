@@ -11,48 +11,45 @@ namespace DataDownloader.yoda
 {
     public class Yoda_Processor
     {
-        public List<Summary> GetStudyInitialDetails(WebPage homePage, int pagenum)
+        public List<Summary> GetStudyInitialDetails(WebPage homePage, int pagenum, StringHelpers sh)
         {
             string cellValue = "";
-            int n = 1000 + (pagenum * 10);
             var pageContent = homePage.Find("div", By.Class("view-content"));
             HtmlNode[] studyRows = pageContent.CssSelect("tbody tr").ToArray();
             List<Summary> page_study_list = new List<Summary>();
-
+         
             foreach (HtmlNode row in studyRows)
             {
-                n++;
                 // 6 columns in each row, 
                 // 0: NCT number, 1: generic name, 2: title, with link 3: Enrolment number, 
                 // 4: CSR download link, 5: view field ops (?)
 
-                Summary st = new Summary();
-                st.id = n;
+                Summary sm = new Summary();
                 HtmlNode[] cols = row.CssSelect("td").ToArray();
                 for (int i = 0; i < 5; i++)
                 {
                     HtmlNode col = cols[i];
                     cellValue = col.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
-                    if (cellValue != "") cellValue = cellValue.Replace("??", " ").Replace("&#039;", "'");
+                    if (cellValue != "")
+                    {
+                        cellValue = cellValue.Replace("??", " ").Replace("&#039;", "'");
+                    }
                     switch (i)
                     {
-                        case 0: st.nct_number = cellValue; break;
-                        case 1:
-                            {
-                                st.generic_name = cellValue;
-                                break;
-                            }
+                        case 0: sm.registry_id = cellValue; break;   // Usually NCT number, may be an ISRCT id, may be blank
+                        case 1: sm.generic_name = cellValue; break;
                         case 2:
                             {
-                                st.study_name = cellValue;
+                                sm.study_name = cellValue;
                                 HtmlNode link = col.CssSelect("a").FirstOrDefault();
-                                st.details_link = "https://yoda.yale.edu" + link.Attributes["href"].Value;
+                                string link_text = link.Attributes["href"].Value;
+                                sm.details_link = "https://yoda.yale.edu" + link_text; // url for details page.
                                 break;
                             }
                         case 3:
                             {
                                 if (cellValue != "") cellValue = cellValue.Replace(" ", "");
-                                st.enrolment_num = cellValue;
+                                sm.enrolment_num = cellValue;
                                 break;
                             }
                         case 4:
@@ -60,56 +57,39 @@ namespace DataDownloader.yoda
                                 if (cellValue != "")
                                 {
                                     HtmlNode link = col.CssSelect("a").FirstOrDefault();
-                                    st.csr_link = link.Attributes["href"].Value;
+                                    sm.csr_link = link.Attributes["href"].Value;
                                 }
                                 else
                                 {
-                                    st.csr_link = "";
+                                    sm.csr_link = "";
                                 }
                                 break;
                             }
                     }
+                   
+                    // obtain an sd_id as an MD5 hash of the title, as listed in Yoda
+                    // which is the full scientific title - but thes are not unique (7 duplicted at least)
+                    // so prefix with registry id and enrolment numbers 
+                    // - this combination does seem to be unique
+
+                    sm.sd_sid = sh.CreateMD5(sm.registry_id + sm.study_name + sm.enrolment_num);
+
                 }
-                page_study_list.Add(st);
+
+                page_study_list.Add(sm);
             }
 
             return page_study_list;
         }
 
 
-        public Yoda_Record GetStudyDetails(ScrapingBrowser browser, YodaDataLayer repo, HtmlNode page, Summary sm, LoggingDataLayer logging_repo)
+        public Yoda_Record GetStudyDetails(ScrapingHelpers ch, YodaDataLayer repo, HtmlNode page, Summary sm, LoggingDataLayer logging_repo)
         {
-            ScrapingHelpers ch = new ScrapingHelpers(logging_repo);
-            
-            Yoda_Record st = new Yoda_Record();
+            Yoda_Record st = new Yoda_Record(sm);
             List<SuppDoc> supp_docs = new List<SuppDoc>();
-
-            int id = sm.id;
-            string registry_id = sm.nct_number ?? "";
-
-            // title
-            var titleBlock = page.CssSelect("#block-views-trial-details-block-4").FirstOrDefault();
-            string yoda_title = titleBlock.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim();
+            string sid = st.sd_sid;
             string display_title = "";
-            yoda_title = yoda_title.Replace("&#039;", "'");
-
-            // is this the same title as in the main table
-            // ought to be but...
-
-            if (yoda_title != sm.study_name)
-            {
-                string report = "mismatch in study title - study id " + id.ToString();
-                report += "\npage title = " + yoda_title;
-                report += "\nstudy name = " + sm.study_name + "\n\n";
-                logging_repo.LogLine(report);
-            }
-
-            st.registry_id = registry_id;
-            st.is_yoda_only = (registry_id.StartsWith("NCT") || registry_id.StartsWith("ISRCTN")) ? false : true;
-            st.yoda_title = yoda_title;
-            st.remote_url = sm.details_link;
-
-            logging_repo.LogLine(id.ToString());
+            
 
             // study properties
             var propsBlock = page.CssSelect("#block-views-trial-details-block-2");
@@ -201,7 +181,7 @@ namespace DataDownloader.yoda
                 // ought to be but...
                 if (sd.url != sm.csr_link)
                 {
-                    string report = "mismatch in csr summary link - study id " + id.ToString();
+                    string report = "mismatch in csr summary link - study id " + sid;
                     report += "\nicon csr link = " + sd.url;
                     report += "\ntable csr link = " + sm.csr_link + "\n\n";
                     logging_repo.LogLine(report);
@@ -323,14 +303,7 @@ namespace DataDownloader.yoda
                 if (add_this_doc) supp_docs_available.Add(sd);
             }
 
-            // create study attributes 
-            // first obtain an sd_id as an MD5 hash of the title, plus protocol id
-            // there is one instance of two studies with exactly the same title...
-            // the url to the details page, however, must be unique...
-            string link_to_page = sm.details_link;
-            int last_slash_pos = link_to_page.LastIndexOf("/");
-            string sd_sid = link_to_page.Substring(last_slash_pos + 1);
-            st.sd_sid = sd_sid;
+            // create study attributes.
 
             List<Identifier> study_identifiers = new List<Identifier>();
             List<Title> study_titles = new List<Title>();
@@ -339,29 +312,30 @@ namespace DataDownloader.yoda
             int? sponsor_org_id;
             string sponsor_org;
             string identifier_value;
+            string reg_id = st.registry_id;
 
-            if (registry_id.StartsWith("NCT"))
+            if (reg_id.StartsWith("NCT"))
             {
                 // use nct_id to get sponsor id and name
-                SponsorDetails sponsor = repo.FetchYodaSponsorFromNCT(registry_id);
+                SponsorDetails sponsor = repo.FetchYodaSponsorFromNCT(reg_id);
                 sponsor_org_id = sponsor.org_id;
                 sponsor_org = sponsor.org_name;
-                identifier_value = registry_id;
+                identifier_value = reg_id;
                 study_identifiers.Add(new Identifier(identifier_value, 11, "Trial Registry ID", 100120, "ClinicalTrials.gov"));
-                display_title = repo.FetchYodaNameBaseFromNCT(registry_id);
+                display_title = repo.FetchYodaNameBaseFromNCT(reg_id);
                 if (display_title != null)
                 {
                     st.display_title = display_title;
                 }
             }
-            else if (registry_id.StartsWith("ISRCTN"))
+            else if (reg_id.StartsWith("ISRCTN"))
             {
-                SponsorDetails sponsor = repo.FetchYodaSponsorFromISRCTN(registry_id);
+                SponsorDetails sponsor = repo.FetchYodaSponsorFromISRCTN(reg_id);
                 sponsor_org_id = sponsor.org_id;
                 sponsor_org = sponsor.org_name;
-                identifier_value = registry_id;
+                identifier_value = reg_id;
                 study_identifiers.Add(new Identifier(identifier_value, 11, "Trial Registry ID", 100126, "ISRCTN"));
-                display_title = repo.FetchYodaNameBaseFromISRCTN(registry_id);
+                display_title = repo.FetchYodaNameBaseFromISRCTN(reg_id);
                 if (display_title != null)
                 {
                     st.display_title = display_title;
@@ -369,12 +343,12 @@ namespace DataDownloader.yoda
             }
             else
             {
-                SponsorDetails sponsor = repo.FetchYodaSponsorDetailsFromTable(sd_sid);
+                SponsorDetails sponsor = repo.FetchYodaSponsorDetailsFromTable(sid);
                 if (sponsor == null)
                 {
                     sponsor_org_id = 0;
                     sponsor_org = "";
-                    logging_repo.LogLine("No sponsor found for " + yoda_title);
+                    logging_repo.LogLine("No sponsor found for " + st.yoda_title);
                 }
                 else
                 {
@@ -414,14 +388,13 @@ namespace DataDownloader.yoda
                     }
                 }
 
-
                 else if (st.primary_citation_link.Contains("/pmc/articles/"))
                 {
                     // need to interrogate NLM API 
                     int pmc_pos = st.primary_citation_link.IndexOf("/pmc/articles/");
                     string pmc_id = st.primary_citation_link.Substring(pmc_pos + 14);
                     pmc_id = pmc_id.Replace("/", "");
-                    string pubmed_id = ch.GetPMIDFromNLM(browser, pmc_id);
+                    string pubmed_id = ch.GetPMIDFromNLM(pmc_id);
                     if (pubmed_id != null && pubmed_id != "")
                     {
                         study_references.Add(new Reference(pubmed_id));
@@ -431,7 +404,7 @@ namespace DataDownloader.yoda
                 else
                 {
                     // else try and retrieve from linking out to the pubmed page
-                    string pubmed_id = ch.GetPMIDFromPage(browser, st.primary_citation_link);
+                    string pubmed_id = ch.GetPMIDFromPage(st.primary_citation_link);
                     if (pubmed_id != null && pubmed_id != "")
                     {
                         study_references.Add(new Reference(pubmed_id));

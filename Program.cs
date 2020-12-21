@@ -26,7 +26,8 @@ namespace DataDownloader
             Args args = new Args();
             LoggingDataLayer logging_repo = new LoggingDataLayer();
 
-            // Check source id is valid. 
+            // Check source id is valid. If it is, the source property of the 
+            // Logging_repo is also set as part of the function.
             
             Source source = logging_repo.FetchSourceParameters(opts.source_id);
             if (source == null)
@@ -116,9 +117,11 @@ namespace DataDownloader
                 }
             }
 
-            // Simply pass the 'No logging' boolean switch across
+            // Simply pass the 'No logging' boolean switch and
+            // skip recent days nullable integer across
 
             args.no_logging = opts.no_logging;
+            args.skip_recent_days = opts.skip_recent_days;
 
             // Create the main functional class and set it to work.
 
@@ -157,13 +160,16 @@ namespace DataDownloader
         public string cutoff_date { get; set; }
 
         [Option('q', "filter_id", Required = false, HelpText = "Integer id representing id of focused search / fetch.")]
-        public int focused_search_id { get; set; }
+        public int? focused_search_id { get; set; }
+
+        [Option('I', "skip_recent", Required = false, HelpText = "Integer id representing the number of days ago, to skip recent downloads (0 = today).")]
+        public int? skip_recent_days { get; set; }
 
         [Option('p', "previous_searches", Required = false, Separator = ',', HelpText = "One or more ids of the search(es) that will be used to retrieve the data")]
         public IEnumerable<int> previous_searches { get; set; }
 
         [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.saf_events")]
-        public bool no_logging { get; set; }
+        public bool? no_logging { get; set; }
 
     }
 
@@ -175,8 +181,9 @@ namespace DataDownloader
         public string file_name { get; set; }
         public DateTime? cutoff_date { get; set; }
         public int? filter_id { get; set; }
+        public int? skip_recent_days { get; set; }
         public IEnumerable<int> previous_searches { get; set; }
-        public bool no_logging { get; set; }
+        public bool? no_logging { get; set; }
     }
 
 }

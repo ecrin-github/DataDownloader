@@ -9,6 +9,7 @@ namespace DataDownloader.biolincc
         public string remote_url { get; set; }
         public string title { get; set; }
         public string acronym { get; set; }
+        public string accession_number { get; set; }
         public int? study_type_id { get; set; }
         public string study_type { get; set; }
         public string brief_description { get; set; }
@@ -31,8 +32,31 @@ namespace DataDownloader.biolincc
         public List<RegistryId> registry_ids { get; set; }
         public List<Resource> resources { get; set; }
         public List<AssocDoc> assoc_docs { get; set; }
+
+        public BioLincc_Record(BioLincc_Basics bb)
+        {
+            sd_sid = bb.sd_sid;
+            remote_url = bb.remote_url;
+            title = bb.title;
+            acronym = bb.acronym;
+            resources_available = bb.resources_available;
+        }
+
+        public BioLincc_Record()
+        { }
     }
-    
+
+
+    public class BioLincc_Basics
+    {
+        public string sd_sid { get; set; }
+        public string remote_url { get; set; }
+        public string title { get; set; }
+        public string acronym { get; set; }
+        public string collection_type { get; set; }
+        public string resources_available { get; set; }
+    }
+
     public class Link
     {
         public string attribute { get; set; }
