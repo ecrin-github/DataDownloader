@@ -1,8 +1,7 @@
 {
   "profiles": {
     "DataDownloader": {
-      "commandName": "Project",
-      "commandLineArgs": "-s 100123 -t 142 -I 0"
+      "commandName": "Project"
     }
   }
 }

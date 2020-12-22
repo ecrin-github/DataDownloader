@@ -69,16 +69,17 @@ namespace DataDownloader.euctr
                         StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(s.eudract_id, source_id);
                         if (file_record == null)
                         {
-                            do_download = true;  // record does not exist
-                        }
-                        else if (days_ago == null || !logging_repo.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
-                        {
-                            // if record already within last days_ago, ignore it... (may happen if re-running after an error)
-                            do_download = true;  // record has not been downloaded recently
+                            do_download = true;  // record does not yet exist
                         }
                         else if (!incomplete_only || file_record.assume_complete != true)
                         {
-                            do_download = true; // download if not assumed complete, or incomplete only flag does not apply
+                            // if record exists only consider it if the 'incomplete only' flag is being ignored,
+                            // or the completion status is false or null
+                            // Even then do a double check to ensure the record has not been recently downloaded
+                            if (days_ago == null || !logging_repo.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
+                            {
+                                do_download = true; // download if not assumed complete, or incomplete only flag does not apply
+                            }
                         }
 
                         if (do_download)
