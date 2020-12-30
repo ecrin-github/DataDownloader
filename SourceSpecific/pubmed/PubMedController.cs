@@ -58,6 +58,7 @@ namespace DataDownloader.pubmed
         int source_id;
         Args args;
         XmlWriterSettings settings;
+        ScrapingHelpers ch;
 
         public PubMed_Controller(int _saf_id, Source _source, Args _args, LoggingDataLayer _logging_repo)
         {
@@ -74,42 +75,28 @@ namespace DataDownloader.pubmed
             settings = new XmlWriterSettings();
             settings.Async = true;
             settings.Encoding = System.Text.Encoding.UTF8;
+            ch = new ScrapingHelpers(logging_repo);
         }
 
         public async Task<DownloadResult> ProcessDataAsync()
         {
             DownloadResult res = null;
-            if (args.type_id == 114 && args.filter_id == 10003)
+            IEnumerable<string> idstrings = null;
+            if (args.filter_id == 10003)
             {
                 // download pmids with references to trial registries, that
                 // have been revised since the cutoff date
                 await CreatePMIDsListfromBanksAsync();
-                IEnumerable<string> idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
-                res = await DownloadPubmedEntriesAsync(idstrings);
+                idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
             }
-            if (args.type_id == 114 && args.filter_id == 10004)
+            if (args.filter_id == 10004)
             {
                 // download pmids listed as references in other sources,
                 // that have been revised since the cutoff date
                 CreatePMIDsListfromSources();
-                IEnumerable<string> idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
-
-                res = await DownloadPubmedEntriesAsync(idstrings);
+                idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
             }
-            if (args.type_id == 121 && args.filter_id == 10003)
-            {
-                // download all pmids with references to trial registries
-                await CreatePMIDsListfromBanksAsync();
-                IEnumerable<string> idstrings = pubmed_repo.FetchDistinctBankPMIDStrings();
-                res = await DownloadPubmedEntriesAsync(idstrings);
-            }
-            if (args.type_id == 121 && args.filter_id == 10004)
-            {
-                // download all pmids listed as references in other sources
-                CreatePMIDsListfromSources();
-                IEnumerable<string> idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
-                res = await DownloadPubmedEntriesAsync(idstrings);
-            }
+            res = await DownloadPubmedEntriesAsync(idstrings);
             return res;
         }
 
@@ -123,8 +110,11 @@ namespace DataDownloader.pubmed
             CopyHelpers helper = new CopyHelpers();
             IEnumerable<PMIDBySource> references;
 
-            // Loop threough the study databases that hold
+            // Loop through the study databases that hold
             // study_reference tables, i.e. with pmid ids
+            // this is not cutoff date sensitive as last revised date
+            // not known at this time - has to be checked later
+
             IEnumerable<Source> sources = pubmed_repo.FetchSourcesWithReferences();
             foreach (Source s in sources)
             {
@@ -146,7 +136,14 @@ namespace DataDownloader.pubmed
             string search_term;
             CopyHelpers helper = new CopyHelpers();
             string baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=";
-            bool include_dates = (args.type_id == 114) ? true : false;
+
+            // this search can be (and usually is) data sensitive.
+
+            bool include_dates_in_url = (args.type_id == 114) ? true : false;
+
+            // The eSearchResult class was generated automaticaly using the xsd.exe tool.
+
+            XmlSerializer xSerializer = new XmlSerializer(typeof(eSearchResult));
 
             pubmed_repo.SetUpTempPMIDsByBankTable();
             pubmed_repo.SetUpBankPMIDsTable();
@@ -160,7 +157,7 @@ namespace DataDownloader.pubmed
                 // get databank details
                 bank_id = s.id;
                 search_term = s.nlm_abbrev + "[SI]";
-                if (include_dates)
+                if (include_dates_in_url)
                 {
                     string today = DateTime.Now.ToString("yyyy/MM/dd");
                     string cutoff = ((DateTime)args.cutoff_date).ToString("yyyy/MM/dd");
@@ -169,54 +166,61 @@ namespace DataDownloader.pubmed
                 }
                 string url = baseURL + search_term;
 
-
                 // Get the number of total records that have this databank reference
                 // and calculate the loop parameters
-                totalRecords = await pubmed_repo.GetBankDataCountAsync(url);
-                numCallsNeeded = (int)(totalRecords / retmax) + 1;
-                pubmed_repo.TruncateTempPMIDsByBankTable();
-
-                // loop through the records and obtain and store relevant
-                // records retmax (= 1000) at a time
-
-                for (int i = 0; i < numCallsNeeded; i++)
+                string responseBody = await ch.GetStringFromURLAsync(url);
+                if (responseBody != null)
                 {
-                    try
+                    using (TextReader reader = new StringReader(responseBody))
                     {
-                        int start = i * 1000;
-                        string selectedRecords = "&retstart=" + start.ToString() + "&retmax=" + retmax.ToString();
+                        eSearchResult result = (eSearchResult)xSerializer.Deserialize(reader);
+                        totalRecords = (result != null) ? result.Count : 0;
+                    }
+                    if (totalRecords > 0)
+                    {
+                        numCallsNeeded = (int)(totalRecords / retmax) + 1;
+                        pubmed_repo.TruncateTempPMIDsByBankTable();
 
-                        // Put a 2 second pause beefore each call.
-                        await Task.Delay(2000);
-                        string responseBody = await webClient.GetStringAsync(url + selectedRecords);
+                        // loop through the records and obtain and store relevant
+                        // records, of PubMed Ids, retmax (= 1000) at a time
 
-                        // The eSearchResult class allows the returned json string to be easily deserialised
-                        // and the required values, of each Id in the IdList, can then be read.
-
-                        XmlSerializer xSerializer = new XmlSerializer(typeof(eSearchResult));
-                        using (TextReader reader = new StringReader(responseBody))
+                        for (int i = 0; i < numCallsNeeded; i++)
                         {
-                            eSearchResult result = (eSearchResult)xSerializer.Deserialize(reader);
-                            if (result != null)
+                            try
                             {
-                                var FoundIds = Array.ConvertAll(result.IdList, ele => new PMIDByBank(ele.ToString()));
-                                pubmed_repo.StorePMIDsByBank(helper.bank_ids_helper, FoundIds);
+                                int start = i * retmax;
+                                string selectedRecords = "&retstart=" + start.ToString() + "&retmax=" + retmax.ToString();
 
-                                string feedback = "Storing " + retmax.ToString() +
-                                                  " records from " + start.ToString() + " in bank " + search_term;
-                                logging_repo.LogLine(feedback);
+                                // Put a 2 second pause before each call.
+                                await Task.Delay(2000);
+                                responseBody = await ch.GetStringFromURLAsync(url + selectedRecords);
+                                if (responseBody != null)
+                                {
+                                    using (TextReader reader = new StringReader(responseBody))
+                                    {
+                                        // The eSearchResult class allows the returned json string to be easily deserialised
+                                        // and the required values, of each Id in the IdList, can then be read.
+
+                                        eSearchResult result = (eSearchResult)xSerializer.Deserialize(reader);
+                                        var FoundIds = Array.ConvertAll(result.IdList, ele => new PMIDByBank(ele.ToString()));
+                                        pubmed_repo.StorePMIDsByBank(helper.bank_ids_helper, FoundIds);
+
+                                        string feedback = "Storing " + retmax.ToString() +
+                                                            " records from " + start.ToString() + " in bank " + search_term;
+                                        logging_repo.LogLine(feedback);
+                                    }
+                                }
+                            }
+                            catch (HttpRequestException e)
+                            {
+                                logging_repo.LogError("In PubMed CreatePMIDsListfromBanksAsync(): " + e.Message);
                             }
                         }
-                    }
 
-                    catch (HttpRequestException e)
-                    {
-                        logging_repo.LogError("In PubMed CreatePMIDsListfromBanksAsync(): " + e.Message);
+                        // transfer across to total table...
+                        pubmed_repo.TransferBankPMIDsToTotalTable(s.nlm_abbrev);
                     }
                 }
-
-                // transfer across to total table...
-                pubmed_repo.TransferBankPMIDsToTotalTable(s.nlm_abbrev);
             }
 
             pubmed_repo.DropTempPMIDByBankTable();
@@ -231,6 +235,10 @@ namespace DataDownloader.pubmed
             DownloadResult res = new DownloadResult();
             bool ignore_revision_date = (args.type_id == 121) ? true : false;
 
+            // ********************** NEEDS REVISION USING A ************************
+            // ******************* POST - SEARCH - FETCH WORKFLOW *******************
+            // ********************* FAR TOO SLOW AT THE MOMENT *********************
+
             try
             {
                 // loop through the references - already in groups of 10 
@@ -243,55 +251,58 @@ namespace DataDownloader.pubmed
 
                     string url = baseURL + idstring + "&retmode=xml";
                     XmlDocument xdoc = new XmlDocument();
-                    string responseBody = await webClient.GetStringAsync(url);
-                    xdoc.LoadXml(responseBody);
-                    XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
-
-                    // Consider each article node in turn
-
-                    foreach (XmlNode article in articles)
+                    string responseBody = await ch.GetStringFromURLAsync(url);
+                    if (responseBody != null)
                     {
-                        string pmid = article.SelectSingleNode("MedlineCitation/PMID").InnerText;
-                        if (Int32.TryParse(pmid, out int ipmid))
-                        {
-                            // get current or new file download record, calculate
-                            // and store last revised date. Write new or replace
-                            // file and update file_record (by ref).
-                            res.num_checked++;
-                            DateTime? last_revised_datetime = GetDateLastRevised(article);
-                            ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, source.id);
-                            if (file_record == null)
-                            {
-                                string remote_url = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid;
-                                file_record = new ObjectFileRecord(source.id, pmid, remote_url, saf_id);
-                                file_record.last_revised = last_revised_datetime;
-                                WriteNewFile(article, ipmid, file_record);
-                                
-                                logging_repo.InsertObjectFileRec(file_record);
-                                res.num_added++;
-                                res.num_downloaded++;
-                            }
-                            else
-                            {
-                                // normally should be less then but here <= to be sure
-                                if (ignore_revision_date || 
-                                   (last_revised_datetime != null 
-                                           && file_record.last_downloaded <= last_revised_datetime))
-                                {
-                                    file_record.last_saf_id = saf_id;
-                                    file_record.last_revised = last_revised_datetime;
-                                    ReplaceFile(article, file_record);
+                        xdoc.LoadXml(responseBody);
+                        XmlNodeList articles = xdoc.GetElementsByTagName("PubmedArticle");
 
-                                    logging_repo.StoreObjectFileRec(file_record);
+                        // Consider each article node in turn
+
+                        foreach (XmlNode article in articles)
+                        {
+                            string pmid = article.SelectSingleNode("MedlineCitation/PMID").InnerText;
+                            if (Int32.TryParse(pmid, out int ipmid))
+                            {
+                                // get current or new file download record, calculate
+                                // and store last revised date. Write new or replace
+                                // file and update file_record (by ref).
+                                res.num_checked++;
+                                DateTime? last_revised_datetime = GetDateLastRevised(article);
+                                ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, source.id);
+                                if (file_record == null)
+                                {
+                                    string remote_url = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid;
+                                    file_record = new ObjectFileRecord(source.id, pmid, remote_url, saf_id);
+                                    file_record.last_revised = last_revised_datetime;
+                                    WriteNewFile(article, ipmid, file_record);
+
+                                    logging_repo.InsertObjectFileRec(file_record);
+                                    res.num_added++;
                                     res.num_downloaded++;
                                 }
+                                else
+                                {
+                                    // normally should be less then but here <= to be sure
+                                    if (ignore_revision_date ||
+                                       (last_revised_datetime != null
+                                               && file_record.last_downloaded <= last_revised_datetime))
+                                    {
+                                        file_record.last_saf_id = saf_id;
+                                        file_record.last_revised = last_revised_datetime;
+                                        ReplaceFile(article, file_record);
+
+                                        logging_repo.StoreObjectFileRec(file_record);
+                                        res.num_downloaded++;
+                                    }
+                                }
+
+                                if (res.num_checked % 100 == 0) logging_repo.LogLine(res.num_checked.ToString());
                             }
-
-                            if (res.num_checked % 100 == 0) logging_repo.LogLine(res.num_checked.ToString());
                         }
-                    }
 
-                    System.Threading.Thread.Sleep(800);
+                        System.Threading.Thread.Sleep(800);
+                    }
                 }
 
                 return res;

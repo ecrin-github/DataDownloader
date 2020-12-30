@@ -48,13 +48,22 @@ namespace DataDownloader
             sql_file_select_string += " last_harvest_id, last_harvested, last_import_id, last_imported ";
         }
 
-        public Source SourceParameters => source;
+        // Used to check if a log file with a named source has been created
+        public string LogFilePath => logfile_path;
 
         public void OpenLogFile()
         {
             string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
                               .Replace("-", "").Replace(":", "").Replace("T", " ");
             logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string + ".log";
+            sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
+        }
+
+        public void OpenNoSourceLogFile()
+        {
+            string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
+                              .Replace("-", "").Replace(":", "").Replace("T", " ");
+            logfile_path += logfile_startofpath + "DL No Source " + dt_string + ".log";
             sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
         }
 

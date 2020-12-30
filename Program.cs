@@ -22,112 +22,132 @@ namespace DataDownloader
         static async Task<int> RunOptionsAndReturnExitCodeAsync(Options opts)
         {
             // Handle options.
-
             Args args = new Args();
             LoggingDataLayer logging_repo = new LoggingDataLayer();
 
             // Check source id is valid. If it is, the source property of the 
             // Logging_repo is also set as part of the function.
-            
-            Source source = logging_repo.FetchSourceParameters(opts.source_id);
-            if (source == null)
+            try
             {
-                // No log file available yet.
-                Console.WriteLine("Sorry - the first argument does not correspond to a known source");
-                return -1;
-            }
-            args.source_id = source.id;
-            logging_repo.OpenLogFile();
-
-            // Check source fetch type id is valid. 
-
-            SFType sf_type = logging_repo.FetchTypeParameters(opts.search_fetch_type_id);
-            if (sf_type == null)
-            {
-                logging_repo.LogLine("Sorry - the type argument does not correspond to a known search / fetch type");
-                return -1;
-            }
-            args.type_id = sf_type.id;
-
-
-            // If a date is required check one is present and is valid. 
-            // It should be in the ISO YYYY-MM-DD format.
-
-            if (sf_type.requires_date)
-            {
-                string cutoff_date = opts.cutoff_date;
-                if (!string.IsNullOrEmpty(cutoff_date))
+                Source source = logging_repo.FetchSourceParameters(opts.source_id);
+                if (source == null)
                 {
-                    if (Regex.Match(cutoff_date, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
+                    // N.B. No log file available yet - needs to be created in exception handler
+                    throw new ArgumentException("The first argument does not correspond to a known source");
+                }
+                args.source_id = source.id;
+                logging_repo.OpenLogFile();
+
+                // Check source fetch type id is valid. 
+
+                SFType sf_type = logging_repo.FetchTypeParameters(opts.search_fetch_type_id);
+                if (sf_type == null)
+                {
+                    throw new ArgumentException("the type argument does not correspond to a known search / fetch type");
+                }
+                args.type_id = sf_type.id;
+
+
+                // If a date is required check one is present and is valid. 
+                // It should be in the ISO YYYY-MM-DD format.
+
+                if (sf_type.requires_date)
+                {
+                    string cutoff_date = opts.cutoff_date;
+                    if (!string.IsNullOrEmpty(cutoff_date))
                     {
-                        args.cutoff_date = new DateTime(
-                                    Int32.Parse(cutoff_date.Substring(0, 4)),
-                                    Int32.Parse(cutoff_date.Substring(5, 2)),
-                                    Int32.Parse(cutoff_date.Substring(8, 2)));
+                        if (Regex.Match(cutoff_date, @"^20\d{2}-[0,1]\d{1}-[0, 1, 2, 3]\d{1}$").Success)
+                        {
+                            args.cutoff_date = new DateTime(
+                                        Int32.Parse(cutoff_date.Substring(0, 4)),
+                                        Int32.Parse(cutoff_date.Substring(5, 2)),
+                                        Int32.Parse(cutoff_date.Substring(8, 2)));
+                        }
+                    }
+                    else
+                    {
+                        // Try and find the last cut off date and use that
+                        args.cutoff_date = logging_repo.ObtainLastDownloadDate(source.id);
+                    }
+
+                    if (args.cutoff_date == null)
+                    {
+                        string error_message = "This search fetch type requires a date";
+                        error_message += " in the format YYYY-MM-DD and this is missing";
+                        throw new ArgumentException(error_message);
                     }
                 }
-                else
+
+                // If a file is required check a name is supplied and that it
+                // corresponds to a file.
+
+                args.file_name = opts.file_name;
+                if (sf_type.requires_file)
                 {
-                    // Try and find the last cut off date and use that
-                    args.cutoff_date = logging_repo.ObtainLastDownloadDate(source.id);
+                    if (string.IsNullOrEmpty(args.file_name) || !File.Exists(args.file_name))
+                    {
+                        string error_message = "This search fetch type requires a file name";
+                        error_message += " and no valid file path and name is supplied";
+                        throw new ArgumentException(error_message);
+                    }
                 }
-                
-                if (args.cutoff_date == null)
+
+                args.filter_id = opts.focused_search_id;
+                if (sf_type.requires_search_id)
                 {
-                    logging_repo.LogLine("Sorry - this search fetch type requires a date"); ;
-                    logging_repo.LogLine("in the format YYYY-MM-DD and this is missing");
-                    return -1;
+                    if (args.filter_id == 0 || args.filter_id == null)
+                    {
+                        string error_message = "This search fetch type requires an integer referencing a search type";
+                        error_message += " and no valid filter (search) id is supplied";
+                        throw new ArgumentException(error_message);
+                    }
                 }
+
+                args.previous_searches = opts.previous_searches;
+                if (sf_type.requires_prev_saf_ids)
+                {
+                    if (args.previous_searches.Count() == 0)
+                    {
+                        string error_message = "This search fetch type requires  one or more";
+                        error_message += " previous search-fetch ids and none were supplied supplied";
+                        throw new ArgumentException(error_message);
+                    }
+                }
+
+                // Simply pass the 'No logging' boolean switch and
+                // skip recent days nullable integer across
+
+                args.no_logging = opts.no_logging;
+                args.skip_recent_days = opts.skip_recent_days;
+
+                // Create the main functional class and set it to work.
+
+                Downloader dl = new Downloader(logging_repo);
+                await dl.RunDownloaderAsync(args, source);
+                return 0;
             }
 
-            // If a file is required check a name is supplied and that it
-            // corresponds to a file.
-
-            args.file_name = opts.file_name;
-            if (sf_type.requires_file)
+            catch (ArgumentException a)
             {
-                if (string.IsNullOrEmpty(args.file_name) || !File.Exists(args.file_name))
+                if (logging_repo.LogFilePath == null)
                 {
-                    logging_repo.LogLine("Sorry - this search fetch type requires a file name"); ;
-                    logging_repo.LogLine("and no valid file path and name is supplied");
-                    return -1;
+                    // create a log file without the source parameter
+                    logging_repo.OpenNoSourceLogFile();
+
                 }
+                logging_repo.LogError("Parameter exception: " + a.Message);
+                logging_repo.CloseLog();
+                return -1;
             }
 
-            args.filter_id = opts.focused_search_id;
-            if (sf_type.requires_search_id)
+            catch (Exception e)
             {
-                if (args.filter_id == 0 || args.filter_id == null)
-                {
-                    logging_repo.LogLine("Sorry - this search fetch type requires an integer referencing a search type"); ;
-                    logging_repo.LogLine("and no valid file path and name is supplied");
-                    return -1;
-                }
+                logging_repo.LogError("Unhandled exception: " + e.Message);
+                logging_repo.LogLine(e.StackTrace);
+                logging_repo.LogLine(e.TargetSite.Name);
+                logging_repo.CloseLog();
+                return -1;
             }
-
-
-            args.previous_searches = opts.previous_searches;
-            if (sf_type.requires_prev_saf_ids)
-            {
-                if (args.previous_searches.Count() == 0)
-                {
-                    logging_repo.LogLine("Sorry - this search fetch type requires one or more");
-                    logging_repo.LogLine("previous search-fetch ids and none were supplied supplied");
-                    return -1;
-                }
-            }
-
-            // Simply pass the 'No logging' boolean switch and
-            // skip recent days nullable integer across
-
-            args.no_logging = opts.no_logging;
-            args.skip_recent_days = opts.skip_recent_days;
-
-            // Create the main functional class and set it to work.
-
-            Downloader dl = new Downloader(logging_repo);
-            await dl.RunDownloaderAsync(args, source);
-            return 0;
         }
 
 

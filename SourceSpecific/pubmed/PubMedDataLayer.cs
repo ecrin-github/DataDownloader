@@ -234,36 +234,6 @@ namespace DataDownloader.pubmed
             }
         }
 
-        public async Task<int> GetBankDataCountAsync(string url)
-        {
-            try
-            {
-                HttpClient webClient = new HttpClient();
-                string responseBody = await webClient.GetStringAsync(url);
-                XmlSerializer xSerializer = new XmlSerializer(typeof(eSearchResult));
-                using (TextReader reader = new StringReader(responseBody))
-                {
-                    // The eSearchResult class was generated automaticaly using the xsd.exe tool
-
-                    eSearchResult result = (eSearchResult)xSerializer.Deserialize(reader);
-                    if (result != null)
-                    {
-                        return result.Count;
-                    }
-                    else
-                    {
-                        return 0;
-                    }
-                }
-            }
-
-            catch (HttpRequestException e)
-            {
-                logging_repo.LogError("In PubMed GetBankDataCountAsync: "+ e.Message);
-                return 0;
-            }
-        }
-        
         public void TruncateTempPMIDsByBankTable()
         {
             using (var conn = new NpgsqlConnection(connString))

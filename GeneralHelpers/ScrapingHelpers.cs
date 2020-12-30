@@ -25,7 +25,7 @@ namespace DataDownloader
         {
             logging_repo = _logging_repo;
             browser = _browser;
-            webClient = null;
+            webClient = new HttpClient();
         }
 
         public ScrapingHelpers(LoggingDataLayer _logging_repo)
