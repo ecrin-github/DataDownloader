@@ -48,6 +48,21 @@ namespace DataDownloader
                 args.type_id = sf_type.id;
 
 
+                // do the filter type if any before the date
+                // as may be required in the fetch last date function
+
+                args.filter_id = opts.focused_search_id;
+                if (sf_type.requires_search_id)
+                {
+                    if (args.filter_id == 0 || args.filter_id == null)
+                    {
+                        string error_message = "This search fetch type requires an integer referencing a search type";
+                        error_message += " and no valid filter (search) id is supplied";
+                        throw new ArgumentException(error_message);
+                    }
+                }
+
+
                 // If a date is required check one is present and is valid. 
                 // It should be in the ISO YYYY-MM-DD format.
 
@@ -66,8 +81,15 @@ namespace DataDownloader
                     }
                     else
                     {
-                        // Try and find the last cut off date and use that
-                        args.cutoff_date = logging_repo.ObtainLastDownloadDate(source.id);
+                        // Try and find the last download date and use that
+                        if (sf_type.requires_search_id)
+                        {
+                            args.cutoff_date = logging_repo.ObtainLastDownloadDateWithFilter(source.id, (int)args.filter_id);
+                        }
+                        else
+                        {
+                            args.cutoff_date = logging_repo.ObtainLastDownloadDate(source.id);
+                        }
                     }
 
                     if (args.cutoff_date == null)
@@ -92,16 +114,6 @@ namespace DataDownloader
                     }
                 }
 
-                args.filter_id = opts.focused_search_id;
-                if (sf_type.requires_search_id)
-                {
-                    if (args.filter_id == 0 || args.filter_id == null)
-                    {
-                        string error_message = "This search fetch type requires an integer referencing a search type";
-                        error_message += " and no valid filter (search) id is supplied";
-                        throw new ArgumentException(error_message);
-                    }
-                }
 
                 args.previous_searches = opts.previous_searches;
                 if (sf_type.requires_prev_saf_ids)

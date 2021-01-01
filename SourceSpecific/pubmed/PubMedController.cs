@@ -93,13 +93,10 @@ namespace DataDownloader.pubmed
 
             if (args.filter_id == 10004)
             {
-                res = await ProcessPMIDsListfromDBSourcesAsync();
                 // download pmids listed as references in other sources,
-                // that have been revised since the cutoff date
-                //CreatePMIDsListfromSources();
-                //idstrings = pubmed_repo.FetchDistinctSourcePMIDStrings();
+                // that have been revised since the cutoff date 
+                res = await ProcessPMIDsListfromDBSourcesAsync();
             }
-            //res = await DownloadPubmedEntriesAsync(idstrings);
             return res;
         }
 
@@ -175,7 +172,7 @@ namespace DataDownloader.pubmed
 
                             catch (HttpRequestException e)
                             {
-                                logging_repo.LogError("In PubMed CreatePMIDsListfromBanksAsync(): " + e.Message);
+                                logging_repo.LogError("In PubMed ProcessPMIDsListfromBanksAsync(): " + e.Message);
                                 return null;
                             }
                         }
@@ -294,7 +291,7 @@ namespace DataDownloader.pubmed
 
             catch (HttpRequestException e)
             {
-                logging_repo.LogError("In PubMed DownloadPubmedEntriesUsingSourcesAsync(): " + e.Message);
+                logging_repo.LogError("In PubMed ProcessPMIDsListfromDBSourcesAsync(): " + e.Message);
                 return null;
             }
 
@@ -303,29 +300,24 @@ namespace DataDownloader.pubmed
 
         public void CreatePMIDsListfromSources()
         {
-            // Establish tables and support objects
-            pubmed_repo.SetUpTempPMIDsBySourceTables();
+            // Establish tables and support objects.
 
+            pubmed_repo.SetUpTempPMIDsBySourceTables();
             CopyHelpers helper = new CopyHelpers();
             IEnumerable<PMIDBySource> references;
 
             // Loop through the study databases that hold
             // study_reference tables, i.e. with pmid ids
             // this is not cutoff date sensitive as last revised date
-            // not known at this time - has to be checked later
+            // not known at this time - has to be checked later.
 
             IEnumerable<Source> sources = pubmed_repo.FetchSourcesWithReferences();
             foreach (Source s in sources)
             {
-                //pubmed_repo.TruncateTempPMIDsBySourceTable();
                 references = pubmed_repo.FetchSourceReferences(s.database_name);
                 pubmed_repo.StorePmidsBySource(helper.source_ids_helper, references);
-                //pubmed_repo.TransferSourcePMIDsToTotalTable(s.id);
             }
-
             pubmed_repo.CreatePMID_IDStrings();
-            //pubmed_repo.DropPMIDSourceTempTables();
-
         }
 
 

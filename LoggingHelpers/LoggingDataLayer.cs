@@ -169,6 +169,26 @@ namespace DataDownloader
         }
 
 
+        public DateTime? ObtainLastDownloadDateWithFilter(int source_id, int filter_id)
+        {
+            using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
+            {
+                string sql_string = "select max(time_ended) from sf.saf_events ";
+                sql_string += " where source_id = " + source_id.ToString();
+                sql_string += " and filter_id = " + filter_id.ToString();
+                DateTime last_download_dt = Conn.ExecuteScalar<DateTime>(sql_string);
+                if (last_download_dt != null)
+                {
+                    return last_download_dt.Date;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+
         public Source FetchSourceParameters(int source_id)
         {
             using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
