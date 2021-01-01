@@ -17,6 +17,7 @@ namespace DataDownloader
         private string sql_file_select_string;
         private string logfile_startofpath;
         private string logfile_path;
+        private string pubmed_api_key;
         private StreamWriter sw;
 
         /// <summary>
@@ -41,7 +42,7 @@ namespace DataDownloader
             connString = builder.ConnectionString;
 
             logfile_startofpath = settings["logfilepath"];
-
+            pubmed_api_key = settings["pubmed_api_key"];
 
             sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
             sql_file_select_string += " assume_complete, download_status, local_path, last_saf_id, last_downloaded, ";
@@ -50,6 +51,7 @@ namespace DataDownloader
 
         // Used to check if a log file with a named source has been created
         public string LogFilePath => logfile_path;
+        public string PubmedAPIKey => pubmed_api_key;
 
         public void OpenLogFile()
         {

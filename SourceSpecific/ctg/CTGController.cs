@@ -8,7 +8,6 @@ namespace DataDownloader.ctg
 {
     class CTG_Controller
     {
-        HttpClient webClient;
         CTG_Processor processor;
         Source source;
         string file_base;

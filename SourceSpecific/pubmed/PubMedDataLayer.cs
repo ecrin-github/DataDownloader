@@ -56,6 +56,40 @@ namespace DataDownloader.pubmed
 
         // Tables and functions used for the PMIDs collected from DB Sources
 
+        public void SetUpTempPMIDsBySourceTables()
+        {
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                /*
+                string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmids_by_source;
+                        CREATE TABLE IF NOT EXISTS pp.temp_pmids_by_source(
+                        sd_sid varchar
+                      , pmid varchar) ";
+                conn.Execute(sql_string);
+                */
+
+                string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
+                       CREATE TABLE IF NOT EXISTS pp.pmids_by_source_total(
+                        source_id int
+                      , sd_sid varchar
+                      , pmid varchar)";
+                conn.Execute(sql_string);
+
+                sql_string = @"DROP TABLE IF EXISTS pp.distinct_pmids;
+                       CREATE TABLE IF NOT EXISTS pp.distinct_pmids(
+                         identity int GENERATED ALWAYS AS IDENTITY
+                       , group_id int
+                       , pmid varchar)";
+                conn.Execute(sql_string);
+
+                sql_string = @"DROP TABLE IF EXISTS pp.pmid_id_strings;
+                       CREATE TABLE IF NOT EXISTS pp.pmid_id_strings(
+                       id_string varchar)";
+                conn.Execute(sql_string);
+            }
+        }
+
+
         public IEnumerable<Source> FetchSourcesWithReferences()
         {
             using (var conn = new NpgsqlConnection(mon_connString))
@@ -66,44 +100,7 @@ namespace DataDownloader.pubmed
             }
         }
 
-        public void SetUpTempPMIDsBySourceTable()
-        {
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                string sql_string = @"DROP TABLE IF EXISTS pp.temp_pmids_by_source;
-                        CREATE TABLE IF NOT EXISTS pp.temp_pmids_by_source(
-                        sd_sid varchar
-                      , pmid varchar) ";
-                conn.Execute(sql_string);
-            }
-        }
-
-        public void SetUpSourcePMIDsTable()
-        {
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
-                       CREATE TABLE IF NOT EXISTS pp.pmids_by_source_total(
-                        source_id int
-                      , sd_sid varchar
-                      , pmid varchar)";
-                conn.Execute(sql_string);
-            }
-        }
-
-        public void SetUpDistinctSourcePMIDsTable()
-        {
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                string sql_string = @"DROP TABLE IF EXISTS pp.distinct_pmids_by_source;
-                       CREATE TABLE IF NOT EXISTS pp.distinct_pmids_by_source(
-                         identity int GENERATED ALWAYS AS IDENTITY
-                       , group_id int
-                       , pmid varchar)";
-                conn.Execute(sql_string);
-            }
-        }
-
+        /*
         public void TruncateTempPMIDsBySourceTable()
         {
             using (var conn = new NpgsqlConnection(connString))
@@ -112,6 +109,7 @@ namespace DataDownloader.pubmed
                 conn.Execute(sql_string);
             }
         }
+        */
 
         public IEnumerable<PMIDBySource> FetchSourceReferences(string db_name)
         {
@@ -137,6 +135,7 @@ namespace DataDownloader.pubmed
             }
         }
         
+        /*
         public void TransferSourcePMIDsToTotalTable(int source_id)
         {
             using (var conn = new NpgsqlConnection(connString))
@@ -148,46 +147,54 @@ namespace DataDownloader.pubmed
                 conn.Execute(sql_string);
             }
         }
+        */
 
-        public void FillDistinctSourcePMIDsTable()
+        public void CreatePMID_IDStrings()
         {
             using (var conn = new NpgsqlConnection(connString))
             {
-                string sql_string = @"INSERT INTO pp.distinct_pmids_by_source(
+                string sql_string = @"INSERT INTO pp.distinct_pmids(
                           pmid)
                           SELECT DISTINCT pmid
                           FROM pp.pmids_by_source_total
                           ORDER BY pmid;";
                 conn.Execute(sql_string);
 
-                sql_string = @"Update pp.distinct_pmids_by_source
-                          SET group_id = identity / 10;";
+                sql_string = @"Update pp.distinct_pmids
+                          SET group_id = identity / 100;";
                 conn.Execute(sql_string);
+
+                // fill the id list (100 ids in each striong)
+                sql_string = @"INSERT INTO pp.pmid_id_strings(
+                        id_string)
+                        SELECT DISTINCT string_agg(pmid, ', ') 
+                        OVER (PARTITION BY group_id) 
+                        from pp.distinct_pmids;";
+                conn.Execute(sql_string);
+                // return conn.Query<string>(sql_string);
             }
         }
 
-        public IEnumerable<string> FetchDistinctSourcePMIDStrings()
+        public IEnumerable<string> FetchSourcePMIDStrings()
         {
             using (var conn = new NpgsqlConnection(connString))
             {
-                string sql_string = @"select distinct string_agg(pmid, ', ') 
-                        OVER ( PARTITION BY group_id) 
-                        from pp.distinct_pmids_by_source;";
+                string sql_string = @"select id_string
+                        from pp.pmid_id_strings;";
                 return conn.Query<string>(sql_string);
             }
         }
 
-        public void DropTempPMIDBySourceTable()
+        public void DropPMIDSourceTempTables()
         {
             using (var conn = new NpgsqlConnection(connString))
             {
-                string sql_string = "DROP TABLE IF EXISTS pp.temp_pmids_by_source";
+                string sql_string = @"DROP TABLE IF EXISTS pp.pmids_by_source_total;
+                    DROP TABLE IF EXISTS pp.distinct_pmids;";
                 conn.Execute(sql_string);
             }
         }
 
-
-        // Tables and functions used for the PMIDs collected from Pubmed Bank references
 
         public IEnumerable<PMSource> FetchDatabanks()
         {
@@ -196,7 +203,13 @@ namespace DataDownloader.pubmed
                 string SQLString = "select id, nlm_abbrev from ctx.nlm_databanks where bank_type = 'Trial registry'";
                 return Conn.Query<PMSource>(SQLString);
             }
-        }		
+        }	
+        
+
+        /*
+        // Tables and functions used for the PMIDs collected from Pubmed Bank references
+
+        
 
         public void SetUpTempPMIDsByBankTable()
         {
@@ -315,7 +328,7 @@ namespace DataDownloader.pubmed
                 conn.Execute(sql_string);
             }
         }
-
+        */
     }
 
 }

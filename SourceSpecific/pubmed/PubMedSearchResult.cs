@@ -32,6 +32,10 @@ namespace DataDownloader.pubmed
 
         public int RetStart;
 
+        public int QueryKey;
+
+        public string WebEnv;
+
         [System.Xml.Serialization.XmlArrayItemAttribute("Id", IsNullable = false)]
         public int[] IdList;
 
@@ -73,4 +77,12 @@ namespace DataDownloader.pubmed
 
         public string Explode;
     }
+
+    public partial class ePostResult
+    {
+        public int QueryKey;
+
+        public string WebEnv;
+    }
+
 }
