@@ -14,3 +14,11 @@ https://ecrin-mdr.online/index.php/Downloading_Data,<br/>
 https://ecrin-mdr.online/index.php/Processing_PubMed_Data and <br/>
 https://ecrin-mdr.online/index.php/Logging_and_Tracking<br/>
 
+
+### Provenance
+* Author: Steve Canham
+* Organisation: ECRIN (https://ecrin.org)
+* System: Clinical Research Metadata Repository (MDR)
+* Project: EOSC Life
+* Funding: EU H2020 programme, grant 824087
+
