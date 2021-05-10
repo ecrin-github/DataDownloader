@@ -579,6 +579,10 @@ namespace DataDownloader.biolincc
                                         object_type_id = object_type_details.type_id;
                                         object_type = object_type_details.type_name;
                                     }
+                                    else
+                                    {
+                                        logging_repo.LogLine("!!!! Need to map " + doc_name + " in pp.document_types table !!!!");
+                                    }
                                 }
                             }
 
@@ -626,7 +630,7 @@ namespace DataDownloader.biolincc
                             logging_repo.LogError("Attempt to access specific study link details for " + bb.acronym + " failed");
                         }
                         else
-                        {  
+                        {
                             // set up publication record
                             AssocDoc pubdets = new AssocDoc(Links[i].attribute);
 
@@ -690,15 +694,27 @@ namespace DataDownloader.biolincc
 
             #endregion
 
-            // add in the study properties
+            // get sponsor details from linked NCT record
+            // (or first one listed if multiple).
+
+            if (registry_ids.Count > 0)
+            {
+                string NCTId = registry_ids[0].nct_id;
+                var sponsor_details = repo.FetchSponsorFromNCT(NCTId);
+                if (sponsor_details != null)
+                {
+                    st.sponsor_id = sponsor_details.org_id;
+                    st.sponsor_name = sponsor_details.org_name;
+                }
+                st.nct_base_name = repo.FetchNameBaseFromNCT(NCTId);
+            }
+
             st.primary_docs = primary_docs;
             st.registry_ids = registry_ids;
             st.resources = study_resources;
             st.assoc_docs = assoc_docs;
 
             return st;
-
         }
-
     }
 }

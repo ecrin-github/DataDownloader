@@ -10,10 +10,12 @@ namespace DataDownloader.yoda
         public string registry_id { get; set; }
         public string display_title { get; set; }
         public string yoda_title { get; set; }
+        public string brief_description { get; set; }
         public bool is_yoda_only { get; set; }
         public string remote_url { get; set; }
         public int? sponsor_id { get; set; }
         public string sponsor { get; set; }
+        public int? study_type_id { get; set; }
         public string compound_generic_name { get; set; }
         public string compound_product_name { get; set; }
         public string therapaeutic_area { get; set; }
@@ -24,7 +26,6 @@ namespace DataDownloader.yoda
         public string sponsor_protocol_id { get; set; }
         public string data_partner { get; set; }
         public string conditions_studied { get; set; }
-        public string mean_age { get; set; }
         public string primary_citation_link { get; set; }
         public DateTime? last_revised_date { get; set; }
 
@@ -65,6 +66,15 @@ namespace DataDownloader.yoda
     {
         public int? org_id { get; set; }
         public string org_name { get; set; }
+    }
+
+
+    public class StudyDetails
+    {
+        public string sd_sid { get; set; }
+        public string display_title { get; set; }
+        public string brief_description { get; set; }
+        public int? study_type_id { get; set; }
     }
 
 

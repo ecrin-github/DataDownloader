@@ -231,7 +231,7 @@ namespace DataDownloader
             }
         }
 
-
+        
         public ObjectFileRecord FetchObjectFileRecord(string sd_id, int source_id)
         {
             using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
@@ -240,6 +240,21 @@ namespace DataDownloader
                 sql_string += " from sf.source_data_objects ";
                 sql_string += " where sd_id = '" + sd_id + "' and source_id = " + source_id.ToString();
                 return Conn.Query<ObjectFileRecord>(sql_string).FirstOrDefault();
+            }
+        }
+        
+
+        // used for biolincc only
+        public IEnumerable<StudyFileRecord> FetchStudyFileRecords(int source_id)
+        {
+            string sql_string = "select id, sd_id, local_path ";
+            sql_string += " from sf.source_data_studies ";
+            sql_string += " where source_id = " + source_id.ToString();
+            sql_string += " order by local_path";
+
+            using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
+            {
+                return Conn.Query<StudyFileRecord>(sql_string);
             }
         }
 

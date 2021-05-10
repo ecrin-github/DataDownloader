@@ -93,7 +93,7 @@ namespace DataDownloader.yoda
                     List<Summary> page_study_list = processor.GetStudyInitialDetails(searchPage, i, sh);
                     all_study_list.AddRange(page_study_list);
 
-                    logging_repo.LogLine(i.ToString());
+                    logging_repo.LogLine("search page: " + i.ToString());
                     System.Threading.Thread.Sleep(300);
                 }
             }
@@ -102,7 +102,6 @@ namespace DataDownloader.yoda
                 // do not proceed - give a null download result
                 return null;
             }
-
 
             // Do a check on any possible id duplicates. Consider each study in turn.
 

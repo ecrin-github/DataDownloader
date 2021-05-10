@@ -32,7 +32,7 @@ namespace DataDownloader.yoda
                     cellValue = col.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
                     if (cellValue != "")
                     {
-                        cellValue = cellValue.Replace("??", " ").Replace("&#039;", "'");
+                        cellValue = cellValue.Replace("??", " ").Replace("&#039;", "’").Replace("'", "’");
                     }
                     switch (i)
                     {
@@ -41,6 +41,10 @@ namespace DataDownloader.yoda
                         case 2:
                             {
                                 sm.study_name = cellValue;
+                                //if (sm.study_name.Contains("'"))
+                                //{
+                                //    sm.study_name = sm.study_name.Replace("'", "’");
+                                //}
                                 HtmlNode link = col.CssSelect("a").FirstOrDefault();
                                 string link_text = link.Attributes["href"].Value;
                                 sm.details_link = "https://yoda.yale.edu" + link_text; // url for details page.
@@ -88,8 +92,6 @@ namespace DataDownloader.yoda
             Yoda_Record st = new Yoda_Record(sm);
             List<SuppDoc> supp_docs = new List<SuppDoc>();
             string sid = st.sd_sid;
-            string display_title = "";
-            
 
             // study properties
             var propsBlock = page.CssSelect("#block-views-trial-details-block-2");
@@ -124,10 +126,9 @@ namespace DataDownloader.yoda
                         case "Sponsor Protocol Number": st.sponsor_protocol_id = value; break;
                         case "Data Partner": st.data_partner = value; break;
                         case "Condition Studied": st.conditions_studied = value; break;
-                        case "Mean/Median Age (Years)": st.mean_age = value; break;
                         default:
                             {
-                                logging_repo.LogLine(label);
+                                //logging_repo.LogLine(label);
                                 break;
                             }
                     }
@@ -144,8 +145,8 @@ namespace DataDownloader.yoda
                 string docName = docType.InnerText.Trim();
                 if (docName != "")
                 {
-                    SuppDoc sd = new SuppDoc(docName);
-                    supp_docs.Add(sd);
+                    SuppDoc suppdoc = new SuppDoc(docName);
+                    supp_docs.Add(suppdoc);
                 }
             }
 
@@ -172,17 +173,17 @@ namespace DataDownloader.yoda
             if (csrLink != "" || csrComment != "")
             {
                 // add a new supp doc record
-                SuppDoc sd = new SuppDoc("CSR Summary");
-                sd.url = csrLink;
-                sd.comment = csrComment;
-                supp_docs.Add(sd);
+                SuppDoc suppdoc = new SuppDoc("CSR Summary");
+                suppdoc.url = csrLink;
+                suppdoc.comment = csrComment;
+                supp_docs.Add(suppdoc);
 
                 // is this the same link as in the main table
                 // ought to be but...
-                if (sd.url != sm.csr_link)
+                if (suppdoc.url != sm.csr_link)
                 {
                     string report = "mismatch in csr summary link - study id " + sid;
-                    report += "\nicon csr link = " + sd.url;
+                    report += "\nicon csr link = " + suppdoc.url;
                     report += "\ntable csr link = " + sm.csr_link + "\n\n";
                     logging_repo.LogLine(report);
                 }
@@ -230,10 +231,10 @@ namespace DataDownloader.yoda
                 else
                 {
                     // add a new supp doc record
-                    SuppDoc sd = new SuppDoc("Data Definition Specification");
-                    sd.url = dataLink;
-                    sd.comment = dataComment;
-                    supp_docs.Add(sd);
+                    SuppDoc suppdoc = new SuppDoc("Data Definition Specification");
+                    suppdoc.url = dataLink;
+                    suppdoc.comment = dataComment;
+                    supp_docs.Add(suppdoc);
                 }
             }
 
@@ -263,33 +264,33 @@ namespace DataDownloader.yoda
                 else
                 {
                     // add a new supp doc record
-                    SuppDoc sd = new SuppDoc("Annotated Case Report Form");
-                    sd.url = crfLink;
-                    sd.comment = crfComment;
-                    supp_docs.Add(sd);
+                    SuppDoc suppdoc = new SuppDoc("Annotated Case Report Form");
+                    suppdoc.url = crfLink;
+                    suppdoc.comment = crfComment;
+                    supp_docs.Add(suppdoc);
                 }
             }
 
 
             // eliminate supp_docs that are explicitly not available
             List<SuppDoc> supp_docs_available = new List<SuppDoc>();
-            foreach (SuppDoc sd in supp_docs)
+            foreach (SuppDoc suppdoc in supp_docs)
             {
                 // remove null comments
-                sd.comment = sd.comment ?? "";
+                suppdoc.comment = suppdoc.comment ?? "";
                 bool add_this_doc = true;
 
                 // if link present...
-                if (sd.url != null && sd.url.Trim() != "")
+                if (suppdoc.url != null && suppdoc.url.Trim() != "")
                 {
-                    sd.comment = "Available now";
+                    suppdoc.comment = "Available now";
                 }
 
-                if (sd.comment != "")
+                if (suppdoc.comment != "")
                 {
                     // exclude docs explicitly described as not available
-                    if (sd.comment.ToLower() == "not available" || sd.comment.ToLower() == "not yet available"
-                        || sd.comment.ToLower() == "not yet avaiable")
+                    if (suppdoc.comment.ToLower() == "not available" || suppdoc.comment.ToLower() == "not yet available"
+                        || suppdoc.comment.ToLower() == "not yet avaiable")
                     {
                         add_this_doc = false;
                     }
@@ -297,10 +298,10 @@ namespace DataDownloader.yoda
                 else
                 {
                     // default if no comment or link
-                    sd.comment = "Available upon data request approval";
+                    suppdoc.comment = "Available upon data request approval";
                 }
 
-                if (add_this_doc) supp_docs_available.Add(sd);
+                if (add_this_doc) supp_docs_available.Add(suppdoc);
             }
 
             // create study attributes.
@@ -309,62 +310,64 @@ namespace DataDownloader.yoda
             List<Title> study_titles = new List<Title>();
             List<Reference> study_references = new List<Reference>();
 
-            int? sponsor_org_id;
-            string sponsor_org;
-            string identifier_value;
-            string reg_id = st.registry_id;
+            // org = sponsor - from CGT / ISRCTN tables if registered, otherwise from pp table
+            // In one case there is no sponsor id.
+            // First obtain the data from the other sources...
 
+            string reg_id = st.registry_id;
+            SponsorDetails sponsor = null;
+            StudyDetails sd = null;
             if (reg_id.StartsWith("NCT"))
             {
                 // use nct_id to get sponsor id and name
-                SponsorDetails sponsor = repo.FetchYodaSponsorFromNCT(reg_id);
-                sponsor_org_id = sponsor.org_id;
-                sponsor_org = sponsor.org_name;
-                identifier_value = reg_id;
-                study_identifiers.Add(new Identifier(identifier_value, 11, "Trial Registry ID", 100120, "ClinicalTrials.gov"));
-                display_title = repo.FetchYodaNameBaseFromNCT(reg_id);
-                if (display_title != null)
-                {
-                    st.display_title = display_title;
-                }
+                sponsor = repo.FetchSponsorFromNCT(reg_id);
+                sd = repo.FetchStudyDetailsFromNCT(reg_id);
+                study_identifiers.Add(new Identifier(reg_id, 11, "Trial Registry ID", 100120, "ClinicalTrials.gov"));
             }
             else if (reg_id.StartsWith("ISRCTN"))
             {
-                SponsorDetails sponsor = repo.FetchYodaSponsorFromISRCTN(reg_id);
-                sponsor_org_id = sponsor.org_id;
-                sponsor_org = sponsor.org_name;
-                identifier_value = reg_id;
-                study_identifiers.Add(new Identifier(identifier_value, 11, "Trial Registry ID", 100126, "ISRCTN"));
-                display_title = repo.FetchYodaNameBaseFromISRCTN(reg_id);
-                if (display_title != null)
-                {
-                    st.display_title = display_title;
-                }
+                sponsor = repo.FetchSponsorFromISRCTN(reg_id);
+                sd = repo.FetchStudyDetailsFromISRCTN(reg_id);
+                study_identifiers.Add(new Identifier(reg_id, 11, "Trial Registry ID", 100126, "ISRCTN"));
             }
             else
             {
-                SponsorDetails sponsor = repo.FetchYodaSponsorDetailsFromTable(sid);
-                if (sponsor == null)
-                {
-                    sponsor_org_id = 0;
-                    sponsor_org = "";
-                    logging_repo.LogLine("No sponsor found for " + st.yoda_title);
-                }
-                else
-                {
-                    sponsor_org_id = sponsor.org_id;
-                    sponsor_org = sponsor.org_name;
-                }
+                sponsor = repo.FetchSponsorDetailsFromTable(sid);
+                sd = repo.FetchStudyDetailsFromTable(sid);
             }
 
-            st.sponsor = sponsor_org;
-            st.sponsor_id = sponsor_org_id;
+            // Then insert the data if it is supp_docs_available
+            // Otherwise add as a new record to be manually completed
 
-            // org = sponsor - from CGT / ISRCTN tables if registered, otherwise from pp table
-            // In one case there is no sponsor id
+            if (sponsor != null)
+            {
+                st.sponsor_id = sponsor.org_id;
+                st.sponsor = sponsor.org_name;
+            }
+            else
+            {
+                st.sponsor_id = null;
+                st.sponsor = null;
+                logging_repo.LogError("No sponsor found for " + st.yoda_title + ", at " + st.remote_url);
+            }
+
+            if (sd != null)
+            {
+                st.display_title = sd.display_title ?? "";
+                st.brief_description = sd.brief_description ?? "";
+                st.study_type_id = sd.study_type_id ?? 0;
+            }
+            else
+            {
+                st.study_type_id = 0;
+                logging_repo.LogError("No study details found for " + st.yoda_title + ", at " + st.remote_url);
+                repo.AddNewRecord(st.sd_sid, st.yoda_title);
+            }
+
+
             if (st.sponsor_protocol_id != "")
             {
-                study_identifiers.Add(new Identifier(st.sponsor_protocol_id, 14, "Sponsor ID", sponsor_org_id, sponsor_org));
+                study_identifiers.Add(new Identifier(st.sponsor_protocol_id, 14, "Sponsor ID", sponsor?.org_id, sponsor?.org_name));
             }
 
             // for the study, add the title (seems to be the full scientific title)

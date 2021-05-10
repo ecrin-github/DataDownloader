@@ -38,10 +38,10 @@ namespace DataDownloader.biolincc
             days_ago = args.skip_recent_days;
         }
 
+        
 
         public DownloadResult LoopThroughPages()
         {
-            // Although the args parameter is passed in for consistency it is not used.
             // For BioLincc, all data is downloaded each time during a download, as it takes a relatively short time
             // and the files simply replaced or - if new - added to the folder. There is therrefore not a concept of an
             // update or focused download, as opposed to a full download.
@@ -62,12 +62,17 @@ namespace DataDownloader.biolincc
 
             XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
             DownloadResult res = new DownloadResult();
+            //biolincc_repo.RecreateMultiHBLIsTable();
 
             // Consider each study in turn.
 
             foreach (HtmlNode row in studyRows)
             {
                 res.num_checked++;
+
+                //if (res.num_checked == 3) continue;
+                //if (res.num_checked > 5) break;
+
                 BioLincc_Basics bb = processor.GetStudyBasics(row);
                 if (bb.collection_type == "Non-BioLINCC Resource")
                 {
@@ -85,6 +90,9 @@ namespace DataDownloader.biolincc
 
                         if (st != null)
                         {
+                            // Store the links between Biolincc and NCT records
+                            biolincc_repo.StoreLinks(st.sd_sid, st.registry_ids);
+
                             // Write out study record as XML.
 
                             string file_name = source.local_file_prefix + st.sd_sid + ".xml";
@@ -105,7 +113,49 @@ namespace DataDownloader.biolincc
                 }
             }
 
+            biolincc_repo.UpdateLinkStatus();
             return res;
+        }
+
+
+        public void PostProcessData()
+        {
+            // Preliminary processing of data
+            // Allows groups of Biolinnc trials that equate to a single NCT registry to be identified
+            XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
+            IEnumerable<StudyFileRecord> file_list = logging_repo.FetchStudyFileRecords(source.id);
+            int n = 0; string filePath = "";
+            foreach (StudyFileRecord rec in file_list)
+            {
+                n++;
+                //if (n == 3) continue;
+                //if (n > 5) break;
+
+                filePath = rec.local_path;
+                if (File.Exists(filePath))
+                {
+                    string inputString = "";
+                    using (var streamReader = new StreamReader(filePath, System.Text.Encoding.UTF8))
+                    {
+                        inputString += streamReader.ReadToEnd();
+                    }
+
+                    XmlSerializer serializer = new XmlSerializer(typeof(BioLincc_Record));
+                    StringReader rdr = new StringReader(inputString);
+                    BioLincc_Record studyRegEntry = (BioLincc_Record)serializer.Deserialize(rdr);
+
+                    // update the linkage data 
+                    studyRegEntry.in_multiple_biolincc_group = biolincc_repo.GetMultiLinkStatus(rec.sd_id);
+
+                    // and reserialise
+                    string file_name = source.local_file_prefix + rec.sd_id + ".xml";
+                    string full_path = Path.Combine(file_base, file_name);
+                    file_writer.WriteBioLINCCFile(writer, studyRegEntry, full_path);
+
+                }
+
+                if (n % 10 == 0) logging_repo.LogLine("Updated " + n.ToString());
+            }
         }
     }
 }

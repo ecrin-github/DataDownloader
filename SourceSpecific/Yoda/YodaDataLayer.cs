@@ -45,7 +45,7 @@ namespace DataDownloader.yoda
         }
 
 
-        public SponsorDetails FetchYodaSponsorFromNCT(string nct_id)
+        public SponsorDetails FetchSponsorFromNCT(string nct_id)
         {
             using (var conn = new NpgsqlConnection(_ctg_connString))
             {
@@ -56,17 +56,18 @@ namespace DataDownloader.yoda
         }
 
 
-        public string FetchYodaNameBaseFromNCT(string sd_sid)
+        public StudyDetails FetchStudyDetailsFromNCT(string nct_id)
         {
             using (var conn = new NpgsqlConnection(_ctg_connString))
             {
-                string sql_string = "Select display_title from ad.studies ";
-                sql_string += "where sd_sid = '" + sd_sid + "'";
-                return conn.QueryFirstOrDefault<string>(sql_string);
+                string sql_string = "Select sd_sid, display_title, brief_description, study_type_id from ad.studies ";
+                sql_string += "where sd_sid = '" + nct_id + "'";
+                return conn.QueryFirstOrDefault<StudyDetails>(sql_string);
             }
         }
 
-        public SponsorDetails FetchYodaSponsorFromISRCTN(string isrctn_id)
+
+        public SponsorDetails FetchSponsorFromISRCTN(string isrctn_id)
         {
             using (var conn = new NpgsqlConnection(_isrctn_connString))
             {
@@ -77,18 +78,18 @@ namespace DataDownloader.yoda
         }
 
 
-        public string FetchYodaNameBaseFromISRCTN(string sd_sid)
+        public StudyDetails FetchStudyDetailsFromISRCTN(string isrctn_id)
         {
             using (var conn = new NpgsqlConnection(_isrctn_connString))
             {
-                string sql_string = "Select display_title from ad.studies ";
-                sql_string += "where sd_sid = '" + sd_sid + "'";
-                return conn.QueryFirstOrDefault<string>(sql_string);
+                string sql_string = "Select sd_sid, display_title, brief_description, study_type_id from ad.studies ";
+                sql_string += "where sd_sid = '" + isrctn_id + "'";
+                return conn.QueryFirstOrDefault<StudyDetails>(sql_string);
             }
         }
 
 
-        public SponsorDetails FetchYodaSponsorDetailsFromTable(string sd_sid)
+        public SponsorDetails FetchSponsorDetailsFromTable(string sd_sid)
         {
             using (var conn = new NpgsqlConnection(_yoda_pp_connString))
             {
@@ -98,6 +99,27 @@ namespace DataDownloader.yoda
             }
         }
 
-        
+
+        public StudyDetails FetchStudyDetailsFromTable(string sd_sid)
+        {
+            using (var conn = new NpgsqlConnection(_yoda_pp_connString))
+            {
+                string sql_string = "Select sd_sid, brief_description, study_type_id from pp.not_registered ";
+                sql_string += "where sd_sid = '" + sd_sid + "'";
+                return conn.QueryFirstOrDefault<StudyDetails>(sql_string);
+            }
+        }
+
+
+        public void AddNewRecord(string sd_sid, string title)
+        {
+            using (var conn = new NpgsqlConnection(_yoda_pp_connString))
+            {
+                string sql_string = "INSERT INTO pp.not_registered (sd_sid, title)";
+                sql_string += "VALUES ('" + sd_sid + "', '" + title + "');";
+                conn.Execute(sql_string);
+            }
+        }
+
     }
 }

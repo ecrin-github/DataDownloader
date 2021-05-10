@@ -34,6 +34,7 @@ namespace DataDownloader.euctr
             sf_type_id = args.type_id;
             days_ago = args.skip_recent_days;
         }
+        
 
 
         public DownloadResult LoopThroughPages()
@@ -55,6 +56,7 @@ namespace DataDownloader.euctr
                 return null;
             }
 
+            int skipped = 0;
             int rec_num = processor.GetListLength(searchPage);
             if (rec_num != 0)
             {
@@ -91,6 +93,7 @@ namespace DataDownloader.euctr
                                     do_download = true; // download if not assumed complete, or incomplete only flag does not apply
                                 }
                             }
+                            if (!do_download) skipped++;
 
                             if (do_download)
                             {
@@ -147,7 +150,11 @@ namespace DataDownloader.euctr
                                 System.Threading.Thread.Sleep(800);
                             }
 
-                            if (res.num_checked % 10 == 0) logging_repo.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
+                            if (res.num_checked % 10 == 0)
+                            {
+                                logging_repo.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
+                                logging_repo.LogLine("EUCTR pages skipped: " + skipped.ToString());
+                            }
                         }
 
                     }
@@ -159,6 +166,7 @@ namespace DataDownloader.euctr
                 }
             }
 
+            logging_repo.LogLine("Number of errors: " + access_error_num.ToString());
             return res;
         }
 
@@ -166,18 +174,18 @@ namespace DataDownloader.euctr
         private void CheckAccessErrorCount()
         {
             access_error_num++;
-            if (access_error_num > 5)
+            if (access_error_num % 5 == 0)
             {
-                // do a 15 minute pause
-                TimeSpan pause = new TimeSpan(0, 15, 0);
+                // do a 5 minute pause
+                TimeSpan pause = new TimeSpan(0, 1, 0);
                 System.Threading.Thread.Sleep(pause);
                 pause_error_num++;
                 access_error_num = 0;
             }
-            if (pause_error_num > 5)
-            {
-                throw new Exception("Too many access errors");
-            }
+            //if (pause_error_num > 5)
+            //{
+                //  throw new Exception("Too many access errors");
+            //}
         }
         
     }

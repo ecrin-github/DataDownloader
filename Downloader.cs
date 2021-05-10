@@ -47,6 +47,7 @@ namespace DataDownloader
                     {
                         BioLINCC_Controller biolincc_controller = new BioLINCC_Controller(browser, saf_id, source, args, logging_repo);
                         res = biolincc_controller.LoopThroughPages();
+                        biolincc_controller.PostProcessData();
                         break;
                     }
                 case 101901:

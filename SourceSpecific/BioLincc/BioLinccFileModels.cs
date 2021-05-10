@@ -28,6 +28,11 @@ namespace DataDownloader.biolincc
         public string dataset_consent_type { get; set; }
         public string dataset_consent_restrictions { get; set; }
 
+        public int? sponsor_id { get; set; }
+        public string sponsor_name { get; set; }
+        public bool in_multiple_biolincc_group { get; set; }
+        public string nct_base_name { get; set; }
+
         public List<PrimaryDoc> primary_docs { get; set; }
         public List<RegistryId> registry_ids { get; set; }
         public List<Resource> resources { get; set; }
@@ -163,5 +168,12 @@ namespace DataDownloader.biolincc
 
         public AssocDoc()
         {}
+    }
+
+
+    public class SponsorDetails
+    {
+        public int? org_id { get; set; }
+        public string org_name { get; set; }
     }
 }
