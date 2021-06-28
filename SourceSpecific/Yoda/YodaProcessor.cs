@@ -121,7 +121,7 @@ namespace DataDownloader.yoda
                         case "Therapeutic Area": st.therapaeutic_area = value; break;
                         case "Enrollment": st.enrolment = value; break;
                         case "% Female": st.percent_female = value; break;
-                        case "% White": st.percent_male = value; break;
+                        case "% White": st.percent_white = value; break;
                         case "Product Class": st.product_class = value; break;
                         case "Sponsor Protocol Number": st.sponsor_protocol_id = value; break;
                         case "Data Partner": st.data_partner = value; break;

@@ -83,7 +83,7 @@ namespace DataDownloader.biolincc
                 where k.nct_id = mults.nct_id;";
                 conn.Execute(sql_string);
             }
-        }
+        } 
 
 
         public bool GetMultiLinkStatus(string sd_sid)
@@ -136,5 +136,19 @@ namespace DataDownloader.biolincc
             }
         }
 
+
+        public void InsertUnmatchedDocumentType(string document_type)
+        {
+            using (var conn = new NpgsqlConnection(_biolincc_connString))
+            {
+                string sql_string = @"INSERT INTO pp.document_types(resource_name) 
+                              SELECT '" + document_type + @"'
+                              WHERE NOT EXISTS (
+                                 SELECT id FROM pp.document_types 
+                                 WHERE resource_name = '" + document_type + @"'
+                               );";
+                conn.Execute(sql_string);
+            }
+        }
     }
 }

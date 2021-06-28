@@ -21,7 +21,7 @@ namespace DataDownloader.yoda
         public string therapaeutic_area { get; set; }
         public string enrolment { get; set; }
         public string percent_female { get; set; }
-        public string percent_male { get; set; }
+        public string percent_white { get; set; }
         public string product_class { get; set; }
         public string sponsor_protocol_id { get; set; }
         public string data_partner { get; set; }

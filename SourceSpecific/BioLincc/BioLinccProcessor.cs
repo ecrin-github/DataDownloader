@@ -574,7 +574,7 @@ namespace DataDownloader.biolincc
                                 if (object_type_id == 0)
                                 {
                                     ObjectTypeDetails object_type_details = repo.FetchDocTypeDetails(doc_name);
-                                    if (object_type_details != null)
+                                    if (object_type_details?.type_id != null)
                                     {
                                         object_type_id = object_type_details.type_id;
                                         object_type = object_type_details.type_name;
@@ -582,6 +582,7 @@ namespace DataDownloader.biolincc
                                     else
                                     {
                                         logging_repo.LogLine("!!!! Need to map " + doc_name + " in pp.document_types table !!!!");
+                                        st.UnmatchedDocTypes.Add(doc_name);
                                     }
                                 }
                             }

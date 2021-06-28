@@ -62,7 +62,9 @@ namespace DataDownloader.biolincc
 
             XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
             DownloadResult res = new DownloadResult();
-            //biolincc_repo.RecreateMultiHBLIsTable();
+
+            // recreate this table each time
+            biolincc_repo.RecreateMultiHBLIsTable();
 
             // Consider each study in turn.
 
@@ -93,19 +95,32 @@ namespace DataDownloader.biolincc
                             // Store the links between Biolincc and NCT records
                             biolincc_repo.StoreLinks(st.sd_sid, st.registry_ids);
 
-                            // Write out study record as XML.
+                            // store any nonmatched documents in the table
+                            // and abort the download for that record
 
-                            string file_name = source.local_file_prefix + st.sd_sid + ".xml";
-                            string full_path = Path.Combine(file_base, file_name);
-                            file_writer.WriteBioLINCCFile(writer, st, full_path);
-                            bool added = logging_repo.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, saf_id,
-                                                              st.last_revised_date, full_path);
-                            res.num_downloaded++;
-                            if (added) res.num_added++;
+                            if (st.UnmatchedDocTypes.Count > 0)
+                            {
+                                foreach (string s in st.UnmatchedDocTypes)
+                                {
+                                    biolincc_repo.InsertUnmatchedDocumentType(s);
+                                }
+                            }
+                            else
+                            {
+                                // Write out study record as XML.
 
-                            // Put a pause here if necessary.
+                                string file_name = source.local_file_prefix + st.sd_sid + ".xml";
+                                string full_path = Path.Combine(file_base, file_name);
+                                file_writer.WriteBioLINCCFile(writer, st, full_path);
+                                bool added = logging_repo.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, saf_id,
+                                                                  st.last_revised_date, full_path);
+                                res.num_downloaded++;
+                                if (added) res.num_added++;
 
-                            System.Threading.Thread.Sleep(1000);
+                                // Put a pause here 
+
+                                System.Threading.Thread.Sleep(1000);
+                            }
                         }
                     }
 

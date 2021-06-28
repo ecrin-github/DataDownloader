@@ -74,7 +74,7 @@ namespace DataDownloader
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string feedback = dt_string + message + identifier;
             Transmit(feedback);
-        }
+         }
 
         public void LogHeader(string message)
         {

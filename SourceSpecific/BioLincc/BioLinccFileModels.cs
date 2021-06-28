@@ -38,6 +38,9 @@ namespace DataDownloader.biolincc
         public List<Resource> resources { get; set; }
         public List<AssocDoc> assoc_docs { get; set; }
 
+        // Set this List up in case it is needed
+        public List<string> UnmatchedDocTypes = new List<string>();
+
         public BioLincc_Record(BioLincc_Basics bb)
         {
             sd_sid = bb.sd_sid;
