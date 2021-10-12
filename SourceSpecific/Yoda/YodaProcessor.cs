@@ -353,7 +353,7 @@ namespace DataDownloader.yoda
 
             if (sd != null)
             {
-                st.display_title = sd.display_title ?? "";
+                st.name_base_title = sd.display_title ?? "";
                 st.brief_description = sd.brief_description ?? "";
                 st.study_type_id = sd.study_type_id ?? 0;
             }
@@ -370,10 +370,9 @@ namespace DataDownloader.yoda
                 study_identifiers.Add(new Identifier(st.sponsor_protocol_id, 14, "Sponsor ID", sponsor?.org_id, sponsor?.org_name));
             }
 
-            // for the study, add the title (seems to be the full scientific title)
-            bool is_default_title = (st.is_yoda_only) ? true : false;
+            // for the study, add the yoda title (seems to be the full scientific title)
 
-            study_titles.Add(new Title(st.sd_sid, st.yoda_title, 18, "Other scientific title", is_default_title, "From YODA web page"));
+            study_titles.Add(new Title(st.sd_sid, st.yoda_title, 18, "Other scientific title", true, "From YODA web page"));
 
             // create study references (pmids)
             if (st.primary_citation_link.Contains("http"))

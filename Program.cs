@@ -36,7 +36,7 @@ namespace DataDownloader
                     throw new ArgumentException("The first argument does not correspond to a known source");
                 }
                 args.source_id = source.id;
-                logging_repo.OpenLogFile();
+                logging_repo.OpenLogFile(opts.file_name);
 
                 // Check source fetch type id is valid. 
 

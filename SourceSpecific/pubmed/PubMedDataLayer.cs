@@ -168,7 +168,7 @@ namespace DataDownloader.pubmed
         {
             using (NpgsqlConnection Conn = new NpgsqlConnection(context_connString))
             {
-                string SQLString = "select id, nlm_abbrev from ctx.nlm_databanks where bank_type = 'Trial registry'";
+                string SQLString = "select id, nlm_abbrev from ctx.nlm_databanks where id not in (100156, 100157, 100158)";
                 return Conn.Query<PMSource>(SQLString);
             }
         }	

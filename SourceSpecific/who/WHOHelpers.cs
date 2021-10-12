@@ -347,61 +347,73 @@ namespace DataDownloader.who
                     sec_id_source = 100127;
                 }
             }
+            
             else if (sec_id.StartsWith("RBR"))
             {
                 sec_id_source = 100117;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("ChiCTR"))
             {
                 sec_id_source = 100118;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("KCT"))
             {
                 sec_id_source = 100119;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("RPCEC"))
             {
                 sec_id_source = 100122;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("DRKS"))
             {
                 sec_id_source = 100124;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("IRCT"))
             {
                 sec_id_source = 100125;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("PACTR"))
             {
                 sec_id_source = 100128;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("PER"))
             {
                 sec_id_source = 100129;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("SLCTR"))
             {
                 sec_id_source = 100130;
                 processed_id = sec_id;
             }
+           
             else if (sec_id.StartsWith("TCTR"))
             {
                 sec_id_source = 100131;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("NL") || sec_id.StartsWith("NTR"))
             {
                 sec_id_source = 100132;
                 processed_id = sec_id;
             }
+            
             else if (sec_id.StartsWith("LBCTR"))
             {
                 sec_id_source = 101989;
@@ -444,6 +456,7 @@ namespace DataDownloader.who
                     }
                 }
             }
+
             if (add_id)
             {
                 Secondary_Id secid = new Secondary_Id(source_field, sec_id, processed_id, sec_id_source);

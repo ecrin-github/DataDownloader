@@ -113,7 +113,14 @@ namespace DataDownloader.ctg
                                     string full_path = Path.Combine(folder_path, st.file_name);
                                     XmlDocument filedoc = new XmlDocument();
                                     filedoc.LoadXml(full_study.OuterXml);
-                                    filedoc.Save(full_path);
+                                    try
+                                    {
+                                        filedoc.Save(full_path);
+                                    }
+                                    catch(Exception e)
+                                    {
+                                        logging_repo.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                                    }
 
                                     // Record details of updated or new record in source_study_data.
 

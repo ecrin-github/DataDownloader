@@ -232,6 +232,7 @@ namespace DataDownloader.pubmed
                         {
                             // The eSearchResult class corresponds to the returned data.
                             ePostResult post_result = (ePostResult)post_xSerializer.Deserialize(post_reader);
+
                             if (post_result != null)
                             {
                                 // search the articles in these ids for recent revisions

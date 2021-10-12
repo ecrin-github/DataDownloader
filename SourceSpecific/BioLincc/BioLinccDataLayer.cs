@@ -41,7 +41,7 @@ namespace DataDownloader.biolincc
         }
 
 
-        public void RecreateMultiHBLIsTable()
+        public void RecreateBiolinccNCTLinksTable()
         {
             using (var conn = new NpgsqlConnection(_biolincc_connString))
             {
@@ -57,11 +57,14 @@ namespace DataDownloader.biolincc
 
         public void StoreLinks(string sd_sid, List<RegistryId> registry_ids)
         {
+            // Insert must follow a delete of ny relevant records.
             using (var conn = new NpgsqlConnection(_biolincc_connString))
             {
                 foreach (RegistryId id in registry_ids)
                 {
-                    string sql_string = @"Insert into pp.biolincc_nct_links(sd_sid, nct_id)
+                    string sql_string = @"Delete from pp.biolincc_nct_links 
+                            where sd_sid = '" + sd_sid + @"';
+                        Insert into pp.biolincc_nct_links(sd_sid, nct_id)
                         values('" + sd_sid + "', '" + id.nct_id + "');";
                     conn.Execute(sql_string);
                 }

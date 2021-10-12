@@ -55,7 +55,8 @@ namespace DataDownloader.isrctn
             string url = part1_of_url + initial_page_num + part2_of_url + cut_off_date_string + end_of_url;
 
             WebPage homePage = ch.GetPage(url);
-            int rec_num = processor.GetListLength(homePage);
+            //int rec_num = processor.GetListLength(homePage);
+            int rec_num = 2198;
             if (rec_num != 0)
             {
                 int loop_limit = rec_num % 100 == 0 ? rec_num / 100 : (rec_num / 100) + 1;

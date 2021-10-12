@@ -51,13 +51,35 @@ namespace DataDownloader
 
         // Used to check if a log file with a named source has been created
         public string LogFilePath => logfile_path;
+
         public string PubmedAPIKey => pubmed_api_key;
 
-        public void OpenLogFile()
+
+        public Source FetchSourceParameters(int source_id)
+        {
+            using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
+            {
+                source = Conn.Get<Source>(source_id);
+                return source;
+            }
+        }
+
+
+        public void OpenLogFile(string source_file_name)
         {
             string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
                               .Replace("-", "").Replace(":", "").Replace("T", " ");
-            logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string + ".log";
+            if (source_file_name != null)
+            {
+                string file_name = source_file_name.Substring(source_file_name.LastIndexOf("\\") + 1);
+                logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string 
+                                           + " USING " + file_name + ".log";
+            }
+            else
+            {
+                logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string + ".log";
+                
+            }
             sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
         }
 
@@ -185,16 +207,6 @@ namespace DataDownloader
                 {
                     return null;
                 }
-            }
-        }
-
-
-        public Source FetchSourceParameters(int source_id)
-        {
-            using (NpgsqlConnection Conn = new NpgsqlConnection(connString))
-            {
-                source = Conn.Get<Source>(source_id);
-                return source;
             }
         }
 

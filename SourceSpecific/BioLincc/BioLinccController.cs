@@ -63,9 +63,6 @@ namespace DataDownloader.biolincc
             XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
             DownloadResult res = new DownloadResult();
 
-            // recreate this table each time
-            biolincc_repo.RecreateMultiHBLIsTable();
-
             // Consider each study in turn.
 
             foreach (HtmlNode row in studyRows)
@@ -99,7 +96,7 @@ namespace DataDownloader.biolincc
                             // and abort the download for that record
 
                             if (st.UnmatchedDocTypes.Count > 0)
-                            {
+                            { 
                                 foreach (string s in st.UnmatchedDocTypes)
                                 {
                                     biolincc_repo.InsertUnmatchedDocumentType(s);

@@ -8,8 +8,8 @@ namespace DataDownloader.yoda
     {
         public string sd_sid { get; set; }
         public string registry_id { get; set; }
-        public string display_title { get; set; }
         public string yoda_title { get; set; }
+        public string name_base_title { get; set; }
         public string brief_description { get; set; }
         public bool is_yoda_only { get; set; }
         public string remote_url { get; set; }
