@@ -30,10 +30,10 @@ namespace DataDownloader.euctr
             }
         }
 
-        public List<EUCTR_Summmary> GetStudySuummaries(WebPage homePage)
+        public List<EUCTR_Summmary> GetStudyList(WebPage homePage)
         {
             List<EUCTR_Summmary> summaries = new List<EUCTR_Summmary>();
-            
+
             var pageContent = homePage.Find("div", By.Class("results"));
             HtmlNode[] studyBoxes = pageContent.CssSelect(".result").ToArray();
             foreach (HtmlNode box in studyBoxes)
@@ -46,82 +46,115 @@ namespace DataDownloader.euctr
                 string sponsor_id = InnerValue(idDetails[1]);
                 string start_date = InnerValue(idDetails[2]);
 
-                EUCTR_Summmary summary = new EUCTR_Summmary(euctr_id, sponsor_id, start_date);
+                summaries.Add(new EUCTR_Summmary(euctr_id, sponsor_id, start_date));
+            }
+            return summaries;
+        }
 
-                // Get other details in the box on the search page.
+        public string GetFullSummaries(WebPage homePage, List<EUCTR_Summmary> summaries)
+        {
+            // receives reference to the search page and the summary list
+            // Completes summary details if the etudy is to be downloaded
 
-                // sponsor name in second row - also extracted later from the details page
-                summary.sponsor_name = InnerValue(studyDetails[1]);
-                if (summary.sponsor_name.Contains("[...]"))
+            var pageContent = homePage.Find("div", By.Class("results"));
+            HtmlNode[] studyBoxes = pageContent.CssSelect(".result").ToArray();
+            
+            for (int i = 0; i < summaries.Count; i++)
+            {
+                EUCTR_Summmary s = summaries[i];
+                if (s.do_download)
                 {
-                    summary.sponsor_name = summary.sponsor_name.Replace("[...]", "");
-                }
+                    HtmlNode box = studyBoxes[i];
+                    //check that these match...
 
-                // medical conditiona as a text description
-                summary.medical_condition = InnerValue(studyDetails[3]);
+                    // Ids and start date - three td elements in a fixed order in first row.
+                    HtmlNode[] studyDetails = box.Elements("tr").ToArray();
+                    HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
 
-                // Disease (MedDRA details) - five td elements in a fixed order, 
-                // if they are there at all appear in a nested table, class = 'meddra'.
-
-                List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
-                HtmlNode meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
-                if (meddraTable != null)
-                {
-                    // this table has at 2 least rows, the first with the headers (so row 0 can be ignored)
-                    HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
-                    for (int k = 1; k < disDetails.Count(); k++)
+                    string euctr_id = InnerValue(idDetails[0]);
+                    if (euctr_id != s.eudract_id)
                     {
-                        MeddraTerm stm = new MeddraTerm();
-                        HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
-                        stm.version = meddraDetails[0].InnerText?.Trim() ?? "";
-                        stm.soc_term = meddraDetails[1].InnerText?.Trim() ?? "";
-                        stm.code = meddraDetails[2].InnerText?.Trim() ?? "";
-                        stm.term = meddraDetails[3].InnerText?.Trim() ?? "";
-                        stm.level = meddraDetails[4].InnerText?.Trim() ?? "";
-                        meddra_terms.Add(stm);
+                        // we have a problem!
+                        string message = "At position " + i.ToString() + " on " + homePage.BaseUrl.ToString() +
+                                         " had a EUCTR id of " + s.eudract_id +
+                                         " in the summary list and an id of " + euctr_id +
+                                         " on the page ";
+                        return message;
                     }
 
-                    summary.meddra_terms = meddra_terms;
-                }
+                    // Get other details in the box on the search page.
 
-                // population age and gender - 2 td elements in a fixed order
-                HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
-                summary.population_age = InnerValue(popDetails[0]);
-                summary.gender = InnerValue(popDetails[1]);
-
-                // Protocol links 
-                // These are often multiple but - for the time being at least
-                // we take the first and use that to obtain further details
-                HtmlNode link = studyDetails[6].CssSelect("a").FirstOrDefault();
-                summary.details_url = "https://www.clinicaltrialsregister.eu" + link.Attributes["href"].Value;
-
-                HtmlNode status_node = studyDetails[6].CssSelect("span.status").FirstOrDefault();
-                if (status_node != null)
-                {
-                    string status = status_node.InnerText ?? "";
-                    // remove surrounding brackets
-                    if (status != "" && status.StartsWith("(") && status.Length > 2)
+                    // sponsor name in second row - also extracted later from the details page
+                    s.sponsor_name = InnerValue(studyDetails[1]);
+                    if (s.sponsor_name.Contains("[...]"))
                     {
-                        status = status.Substring(1, status.Length - 2);
+                        s.sponsor_name = s.sponsor_name.Replace("[...]", "");
                     }
-                    summary.trial_status = status;
+
+                    // medical conditiona as a text description
+                    s.medical_condition = InnerValue(studyDetails[3]);
+
+                    // Disease (MedDRA details) - five td elements in a fixed order, 
+                    // if they are there at all appear in a nested table, class = 'meddra'.
+
+                    List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
+                    HtmlNode meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
+                    if (meddraTable != null)
+                    {
+                        // this table has at 2 least rows, the first with the headers (so row 0 can be ignored)
+                        HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
+                        for (int k = 1; k < disDetails.Count(); k++)
+                        {
+                            MeddraTerm stm = new MeddraTerm();
+                            HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
+                            stm.version = meddraDetails[0].InnerText?.Trim() ?? "";
+                            stm.soc_term = meddraDetails[1].InnerText?.Trim() ?? "";
+                            stm.code = meddraDetails[2].InnerText?.Trim() ?? "";
+                            stm.term = meddraDetails[3].InnerText?.Trim() ?? "";
+                            stm.level = meddraDetails[4].InnerText?.Trim() ?? "";
+                            meddra_terms.Add(stm);
+                        }
+
+                        s.meddra_terms = meddra_terms;
+                    }
+
+                    // population age and gender - 2 td elements in a fixed order
+                    HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
+                    s.population_age = InnerValue(popDetails[0]);
+                    s.gender = InnerValue(popDetails[1]);
+
+                    // Protocol links 
+                    // These are often multiple but - for the time being at least
+                    // we take the first and use that to obtain further details
+                    HtmlNode link = studyDetails[6].CssSelect("a").FirstOrDefault();
+                    s.details_url = "https://www.clinicaltrialsregister.eu" + link.Attributes["href"].Value;
+
+                    HtmlNode status_node = studyDetails[6].CssSelect("span.status").FirstOrDefault();
+                    if (status_node != null)
+                    {
+                        string status = status_node.InnerText ?? "";
+                        // remove surrounding brackets
+                        if (status != "" && status.StartsWith("(") && status.Length > 2)
+                        {
+                            status = status.Substring(1, status.Length - 2);
+                        }
+                        s.trial_status = status;
+                    }
+
+                    // Results link, if any
+                    HtmlNode resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
+                    if (resultLink != null)
+                    {
+                        s.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
+
+                        // if results link present and Status not completed make status "Completed"
+                        // (some entries may not have been updated)
+                        if (s.trial_status != "Completed") s.trial_status = "Completed";
+                    }
                 }
-
-                // Results link, if any
-                HtmlNode resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
-                if (resultLink != null)
-                {
-                    summary.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
-
-                    // if results link present and Status not completed make status "Completed"
-                    // (some entries may not have been updated)
-                    if (summary.trial_status != "Completed") summary.trial_status = "Completed";
-                }
-
-                summaries.Add(summary);
             }
 
-            return summaries;       
+            return "OK";       
         }
 
   
@@ -139,7 +172,8 @@ namespace DataDownloader.euctr
                 foreach (HtmlNode row in summary_rows)
                 {
                     var cells = row.CssSelect("td").ToArray();
-                    if (cells[0].InnerText.Substring(0, 8) == "Date on ")
+
+                    if (cells[0].InnerText.StartsWith("Date on "))
                     {
                         st.entered_in_db = cells[1].InnerText;
                         break;
@@ -270,6 +304,7 @@ namespace DataDownloader.euctr
                             line.item_number = 1;
                             string value = HttpUtility.HtmlDecode(cells[2].InnerText).Trim();
                             if (!string.IsNullOrEmpty(value)) values.Add(new item_value(value));
+                            
                         }
 
                         if (values.Count > 0)
@@ -278,6 +313,7 @@ namespace DataDownloader.euctr
                             line.item_values = values;
                             study_identifiers.Add(line);
                         }
+
                     }
                 }
             }

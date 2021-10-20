@@ -46,9 +46,15 @@ namespace DataDownloader.euctr
             details_url = s.details_url;
             results_url = s.results_url;
             meddra_terms = s.meddra_terms;
-    }
+        }
 
-    public EUCTR_Record()
+        public EUCTR_Record(string _eudract_id, string _details_url)
+        {
+            eudract_id = _eudract_id;
+            details_url = _details_url;
+        }
+
+        public EUCTR_Record()
         { }
     }
 
@@ -64,7 +70,7 @@ namespace DataDownloader.euctr
         public string trial_status { get; set; }        
         public string details_url { get; set; }
         public string results_url { get; set; }
-
+        public bool do_download { get; set; }
         public List<MeddraTerm> meddra_terms { get; set; }
 
         public EUCTR_Summmary(string _eudract_id, string _sponsor_id, string _start_date)

@@ -109,7 +109,7 @@ namespace DataDownloader
             last_downloaded = DateTime.Now;
             local_path = _local_path;
         }
-
+        /*
         // constructor when an 'assumed complete' judgement can be expected (not always there)
         public StudyFileRecord(int _source_id, string _sd_id, string _remote_url, int _last_saf_id,
                                               bool? _assume_complete, string _local_path)
@@ -123,7 +123,7 @@ namespace DataDownloader
             last_downloaded = DateTime.Now;
             local_path = _local_path;
         }
-
+        */
 
         public StudyFileRecord()
         { }

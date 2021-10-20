@@ -314,6 +314,7 @@ namespace DataDownloader
             }
         }
         
+        /*
         public bool UpdateStudyDownloadLogWithCompStatus(int source_id, string sd_id, string remote_url,
                          int saf_id, bool? assume_complete, string full_path)
         {
@@ -356,6 +357,8 @@ namespace DataDownloader
                 return false;
             }
         }
+        */
+
         public bool UpdateStudyDownloadLog(int source_id, string sd_id, string remote_url,
                          int saf_id, DateTime? last_revised_date, string full_path)
         {

@@ -37,6 +37,7 @@ namespace DataDownloader
             // Log parameters and set up search and fetch record.
             string previous_saf_ids = logging_repo.LogArgsParameters(args);
             int saf_id = logging_repo.GetNextSearchFetchId();
+            string download_comments = "";
             SAFEvent saf = new SAFEvent(saf_id, source.id, args.type_id, args.filter_id, args.cutoff_date, previous_saf_ids);
 
             DownloadResult res = new DownloadResult();
@@ -76,6 +77,7 @@ namespace DataDownloader
                     }
                 case 100115:
                     {
+                        download_comments = "Source file:" + args.file_name;
                         WHO_Controller who_controller = new WHO_Controller(saf_id, source, args, logging_repo);
                         res = who_controller.ProcessFile();
                         break;
@@ -108,6 +110,10 @@ namespace DataDownloader
                 saf.num_records_checked = res.num_checked;
                 saf.num_records_downloaded = res.num_downloaded;
                 saf.num_records_added = res.num_added;
+                if (download_comments != "")
+                {
+                    saf.comments = download_comments;
+                }
                 logging_repo.LogRes(res);
             }
             if (args.no_logging == null || args.no_logging == false)
