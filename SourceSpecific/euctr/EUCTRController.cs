@@ -157,7 +157,6 @@ namespace DataDownloader.euctr
                                         file_writer.WriteEUCTRFile(writer, st, full_path);
 
                                         // Get the source data record and modify it or add a new one...
-                                        bool added = false; // indicates if a new record or update of an existing one
                                         StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(st.eudract_id, source_id);
                                         
                                         if (file_record == null)
@@ -167,7 +166,7 @@ namespace DataDownloader.euctr
                                             file_record = new StudyFileRecord(source_id, st.eudract_id, st.details_url, 
                                                                               saf_id, null, full_path);
                                             logging_repo.InsertStudyFileRec(file_record);
-                                            added = true;
+                                            res.num_added++;
                                         }
                                         else
                                         {
@@ -183,7 +182,6 @@ namespace DataDownloader.euctr
                                         }
 
                                         res.num_downloaded++;
-                                        if (added) res.num_added++;
                                     }
                                     else
                                     {
