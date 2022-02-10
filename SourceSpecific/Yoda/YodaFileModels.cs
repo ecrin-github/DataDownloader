@@ -66,6 +66,7 @@ namespace DataDownloader.yoda
     {
         public int? org_id { get; set; }
         public string org_name { get; set; }
+        public string prot_id { get; set; }
     }
 
 

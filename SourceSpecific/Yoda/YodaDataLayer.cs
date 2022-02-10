@@ -49,7 +49,7 @@ namespace DataDownloader.yoda
         {
             using (var conn = new NpgsqlConnection(_ctg_connString))
             {
-                string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_contributors ";
+                string sql_string = "Select organisation_id as org_id, organisation_name as org_name, null from ad.study_contributors ";
                 sql_string += "where sd_sid = '" + nct_id + "' and contrib_type_id = 54;";
                 return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
             }
@@ -71,7 +71,7 @@ namespace DataDownloader.yoda
         {
             using (var conn = new NpgsqlConnection(_isrctn_connString))
             {
-                string sql_string = "Select organisation_id as org_id, organisation_name as org_name from ad.study_contributors ";
+                string sql_string = "Select organisation_id as org_id, organisation_name as org_name, null from ad.study_contributors ";
                 sql_string += "where sd_sid = '" + isrctn_id + "' and contrib_type_id = 54;";
                 return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
             }
@@ -93,7 +93,7 @@ namespace DataDownloader.yoda
         {
             using (var conn = new NpgsqlConnection(_yoda_pp_connString))
             {
-                string sql_string = "Select sponsor_org_id as org_id, sponsor_org as org_name from pp.not_registered ";
+                string sql_string = "Select sponsor_org_id as org_id, sponsor_org as org_name, sponsor_protocol_id as prot_id from pp.not_registered ";
                 sql_string += "where sd_sid = '" + sd_sid + "'";
                 return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
             }
@@ -111,12 +111,12 @@ namespace DataDownloader.yoda
         }
 
 
-        public void AddNewRecord(string sd_sid, string title)
+        public void AddNewRecord(string sd_sid, string title, string protid)
         {
             using (var conn = new NpgsqlConnection(_yoda_pp_connString))
             {
-                string sql_string = "INSERT INTO pp.not_registered (sd_sid, title)";
-                sql_string += "VALUES ('" + sd_sid + "', '" + title + "');";
+                string sql_string = "INSERT INTO pp.not_registered (sd_sid, title, sponsor_protocol_id)";
+                sql_string += "VALUES ('" + sd_sid + "', '" + title + "', '" + protid + "');";
                 conn.Execute(sql_string);
             }
         }

@@ -400,7 +400,7 @@ namespace DataDownloader.pubmed
 
         private void WriteNewFile(XmlNode article, int ipmid, ObjectFileRecord file_record)
         {
-            string folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 10000).ToString("00000") + "xxxx");
+            string folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 100000).ToString("0000") + "xxxxx");
             if (!Directory.Exists(folder_name))
             {
                 Directory.CreateDirectory(folder_name);
