@@ -141,7 +141,6 @@ namespace DataDownloader.yoda
                 }
             }
 
-
             // org = sponsor - from CGT / ISRCTN tables if registered, otherwise from pp table
             // In one case there is no sponsor id.
             // First obtain the data from the other sources...
