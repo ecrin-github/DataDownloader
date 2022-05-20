@@ -122,7 +122,8 @@ namespace DataDownloader.biolincc
                     }
                 }
 
-                if (attribute_name == "Last Updated")
+
+                if (attribute_name == "Dataset(s) Last Updated")
                 {
                     st.last_updated = ch.AttValue(attribute_value, attribute_name, entrySupp);
                     if (st.last_updated == "N/A" || string.IsNullOrEmpty(st.last_updated))
@@ -144,6 +145,12 @@ namespace DataDownloader.biolincc
                     }
                 }
 
+                /*
+                // can no longer use - both dates have disappeared
+                // st,publication year remains null;
+                // the only date is the date the datasets last updated
+                // now corresponds to st.last_updated
+
                 if (st.page_prepared_date != null)
                 {
                     st.publication_year = ((DateTime)st.page_prepared_date).Year;
@@ -152,7 +159,7 @@ namespace DataDownloader.biolincc
                 {
                     st.publication_year = ((DateTime)st.last_revised_date).Year;
                 }
-
+                */
 
                 if (attribute_name == "Clinical Trial URLs")
                 {
