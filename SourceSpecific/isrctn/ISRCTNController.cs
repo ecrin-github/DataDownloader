@@ -46,100 +46,88 @@ namespace DataDownloader.isrctn
             DownloadResult res = new DownloadResult();
             XmlSerializer writer = new XmlSerializer(typeof(ISCTRN_Record));
             ScrapingHelpers ch = new ScrapingHelpers(browser, logging_repo);
+            
 
-            string part1_of_url = "http://www.isrctn.com/search?pageSize=100&sort=&page=";
-            string initial_page_num = "1";
+            string part1_of_url = "http://www.isrctn.com/search?pageSize=100&page=";
             string part2_of_url = "&q=&filters=GT+lastEdited%3A";
-            string end_of_url = "T00%3A00%3A00.000Z&searchType=advanced-search";
+            string end_of_url =   "T00%3A00%3A00.000Z&searchType=advanced-search";
 
-            string url = part1_of_url + initial_page_num + part2_of_url + cut_off_date_string + end_of_url;
+            string start_url = part1_of_url + "1" + part2_of_url + cut_off_date_string + end_of_url;
+            WebPage prePage = ch.GetPage(start_url);   // throw away the initial page received - gives a 'use API' message
+            WebPage summaryPage = ch.GetPage(start_url);
 
-            WebPage homePage = ch.GetPage(url);
-            //int rec_num = processor.GetListLength(homePage);
-            int rec_num = 2198;
+            int rec_num = processor.GetListLength(summaryPage);  // unable to scrape the summary page
+            
             if (rec_num != 0)
             {
                 int loop_limit = rec_num % 100 == 0 ? rec_num / 100 : (rec_num / 100) + 1;
 
                 for (int i = 1; i <= loop_limit; i++)
                 {
-                    // Obtain and go through each page of 100 entries.
+                    // Obtain and go through each page of up to 100 entries.
 
-                    homePage = ch.GetPage(part1_of_url + i.ToString() + 
+                    summaryPage = ch.GetPage(part1_of_url + i.ToString() + 
                                           part2_of_url + cut_off_date_string + end_of_url);
 
-                    int n = 0;
-                    var pageContent = homePage.Find("ul", By.Class("ResultsList"));
-                    HtmlNode[] studyRows = pageContent.CssSelect("li article").ToArray();
-                    string ISRCTNNumber, remote_link;
-                    int colonPos;
+                    var studies = processor.GetPageStudyList(summaryPage);
 
-                    // Now process each study, one row at a time
-
-                    foreach (HtmlNode row in studyRows)
+                    foreach (ISCTRN_Study s in studies)
                     {
-                        HtmlNode main = row.CssSelect(".ResultsList_item_main").FirstOrDefault();
-                        HtmlNode title = main.CssSelect(".ResultsList_item_title a").FirstOrDefault();
-                        if (title != null)
+                        int n = 0;
+                        
+                        string study_id = s.ISRCTN_number;
+
+                        // record has been added or revised since the cutoff date (normally the last download), 
+                        // but...should it be downloaded
+
+                        bool do_download = true;  // by default
+                        if (days_ago != null)
                         {
-                            string titleString = title.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
-                            if (titleString.Contains(":"))
+                            // but if there was a recent download of the same file
+                            // do not download again
+
+                            if (logging_repo.Downloaded_recently(source_id, study_id, (int)days_ago))
                             {
-                                // get ISRCTN id
-
-                                colonPos = titleString.IndexOf(":");
-                                ISRCTNNumber = titleString.Substring(0, colonPos - 1).Trim();
-                                res.num_checked++;
-
-                                // record has been added or revised since the cutoff date (normally the last download), 
-                                // but...should it be downloaded
-                                bool do_download = false;
-                                StudyFileRecord sfr = logging_repo.FetchStudyFileRecord(ISRCTNNumber, source_id);
-                                if (sfr == null)
-                                {
-                                    do_download = true;  // record does not exist
-                                }
-                                else if (days_ago == null || !logging_repo.Downloaded_recently(source_id, ISRCTNNumber, (int)days_ago))
-                                {
-                                    // if record already within last days_ago today, ignore it... (may happen if re-running after an error)
-                                    do_download = true;  // record has not been downloaded recently
-                                }
-                                if (do_download)
-                                { 
-                                    remote_link = "https://www.isrctn.com/" + ISRCTNNumber;
-
-                                    // obtain details of that study
-                                    // but pause every 10 accesses
-                                    if (n % 10 == 0)
-                                    {
-                                        System.Threading.Thread.Sleep(2000);
-                                    }
-                                    ISCTRN_Record st = new ISCTRN_Record();
-                                    WebPage detailsPage = ch.GetPage(remote_link);
-                                    st = processor.GetFullDetails(detailsPage, ISRCTNNumber);
-
-                                    // Write out study record as XML.
-                                    if (!Directory.Exists(file_base))
-                                    {
-                                        Directory.CreateDirectory(file_base);
-                                    }
-                                    string file_name = st.isctrn_id + ".xml";
-                                    string full_path = Path.Combine(file_base, file_name);
-
-                                    file_writer.WriteISRCTNFile(writer, st, full_path);
-                                    bool added = logging_repo.UpdateStudyDownloadLog(source_id, st.isctrn_id, remote_link, saf_id,
-                                                                       st.last_edited, full_path);
-                                    res.num_downloaded++;
-                                    if (added) res.num_added++;
-                                }
+                                do_download = false;
                             }
                         }
+                        res.num_checked++;
 
-                        if (res.num_checked % 10 == 0) logging_repo.LogLine(res.num_checked.ToString() + " files downloaded");
+                        if (do_download)
+                        { 
+                            string link = s.remote_link;
+
+                            // obtain details of that study
+                            // but pause every 5 accesses
+                            n++;
+                            if (n % 5 == 0)
+                            {
+                                System.Threading.Thread.Sleep(2000);
+                            }
+                            ISCTRN_Record st = new ISCTRN_Record();
+                            WebPage detailsPage = ch.GetPage(s.remote_link);
+                            st = processor.GetFullDetails(detailsPage, study_id);
+
+                            // Write out study record as XML.
+                            if (!Directory.Exists(file_base))
+                            {
+                                Directory.CreateDirectory(file_base);
+                            }
+                            string file_name = st.isctrn_id + ".xml";
+                            string full_path = Path.Combine(file_base, file_name);
+
+                            file_writer.WriteISRCTNFile(writer, st, full_path);
+                            bool added = logging_repo.UpdateStudyDownloadLog(source_id, study_id, s.remote_link, saf_id,
+                                                                st.last_edited, full_path);
+                            res.num_downloaded++;
+                            if (added) res.num_added++;
+                        }
                     }
 
+                    logging_repo.LogLine(res.num_checked.ToString() + " files checked");
+                    logging_repo.LogLine(res.num_downloaded.ToString() + " files downloaded");
                 }
-                
+              
             }
             
             return res;

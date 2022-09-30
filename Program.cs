@@ -128,9 +128,12 @@ namespace DataDownloader
 
                 // Simply pass the 'No logging' boolean switch and
                 // skip recent days nullable integer across
+                // as well as any start / end pages
 
                 args.no_logging = opts.no_logging;
                 args.skip_recent_days = opts.skip_recent_days;
+                args.start_page = opts.start_page;
+                args.end_page = opts.end_page;
 
                 // Create the main functional class and set it to work.
 
@@ -203,6 +206,12 @@ namespace DataDownloader
         [Option('L', "no_Logging", Required = false, HelpText = "If present prevents the logging record in sf.saf_events")]
         public bool? no_logging { get; set; }
 
+        [Option('S', "start_page", Required = false, HelpText = "First summary page number to be considered if downloading all EU CTR records (starts at 1)")]
+        public int? start_page { get; set; }
+
+        [Option('E', "end_page", Required = false, HelpText = "Last summary page number to be considered if downloading all EU CTR record")]
+        public int? end_page { get; set; }
+
     }
 
 
@@ -216,6 +225,8 @@ namespace DataDownloader
         public int? skip_recent_days { get; set; }
         public IEnumerable<int> previous_searches { get; set; }
         public bool? no_logging { get; set; }
+        public int? start_page { get; set; }
+        public int? end_page { get; set; }
     }
 
 }

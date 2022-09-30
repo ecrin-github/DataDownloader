@@ -32,6 +32,7 @@ namespace DataDownloader.euctr
         public List<ImpLine> imps { get; set; }
         public List<DetailLine> features { get; set; }
         public List<DetailLine> population { get; set; }
+        public List<Country> countries { get; set; }
 
         public EUCTR_Record(EUCTR_Summmary s)
         {
@@ -46,6 +47,7 @@ namespace DataDownloader.euctr
             details_url = s.details_url;
             results_url = s.results_url;
             meddra_terms = s.meddra_terms;
+            countries = s.countries;
         }
 
         public EUCTR_Record(string _eudract_id, string _details_url)
@@ -72,12 +74,14 @@ namespace DataDownloader.euctr
         public string results_url { get; set; }
         public bool do_download { get; set; }
         public List<MeddraTerm> meddra_terms { get; set; }
+        public List<Country> countries { get; set; }
 
-        public EUCTR_Summmary(string _eudract_id, string _sponsor_id, string _start_date)
+        public EUCTR_Summmary(string _eudract_id, string _sponsor_id, string _start_date, bool _do_download)
         {
             eudract_id = _eudract_id;
             sponsor_id = _sponsor_id;
             start_date = _start_date;
+            do_download = _do_download;
         }
     }
 
@@ -134,7 +138,22 @@ namespace DataDownloader.euctr
     {
         public int id { get; set; }
         public string local_path { get; set; }
+    }
 
+
+    public class Country
+    {
+        public string name { get; set; }
+        public string status { get; set; }
+
+        public Country()
+        { }
+
+        public Country(string _name, string _status)
+        {
+            name = _name;
+            status = _status;
+        }
     }
 
 }

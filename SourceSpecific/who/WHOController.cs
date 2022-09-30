@@ -54,7 +54,7 @@ namespace DataDownloader.who
             {
                 using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
-                    csv.Configuration.HasHeaderRecord = true;
+                    csv.Configuration.HasHeaderRecord = false;
                     var records = csv.GetRecords<WHO_SourceRecord>();
                     logging_repo.LogLine(" Rows loaded into WHO record structure");
 

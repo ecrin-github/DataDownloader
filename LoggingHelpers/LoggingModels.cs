@@ -199,12 +199,29 @@ namespace DataDownloader
         public int num_checked { get; set; }
         public int num_added { get; set; }
         public int num_downloaded { get; set; }
+        public string error_message { get; set; }
 
         public DownloadResult()
         {
             num_checked = 0;
             num_added = 0;
             num_downloaded = 0;
+        }
+
+        public DownloadResult(string _error_message)
+        {
+            num_checked = 0;
+            num_added = 0;
+            num_downloaded = 0;
+            error_message = _error_message;
+        }
+
+        public DownloadResult(int _num_checked, int _num_added, int _num_downloaded, string _error_message)
+        {
+            num_checked = _num_checked;
+            num_added = _num_added;
+            num_downloaded = _num_downloaded;
+            error_message = _error_message;
         }
     }
 

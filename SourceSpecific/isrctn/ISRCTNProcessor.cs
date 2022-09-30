@@ -1,6 +1,7 @@
 ﻿using HtmlAgilityPack;
 using ScrapySharp.Html;
 using ScrapySharp.Network;
+using ScrapySharp.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -28,31 +29,72 @@ namespace DataDownloader.isrctn
             }
         }
 
+
+        public List<ISCTRN_Study> GetPageStudyList(WebPage summaryPage)
+        {
+            var pageContent = summaryPage.Find("ul", By.Class("ResultsList"));
+            HtmlNode[] studyRows = pageContent.CssSelect("li article").ToArray();
+            string ISRCTNNumber, remote_link, study_name;
+            int colonPos;
+
+            List<ISCTRN_Study> studies = new List<ISCTRN_Study>();
+            int n = 0;
+
+            foreach (HtmlNode row in studyRows)
+            {
+                HtmlNode main = row.CssSelect(".ResultsList_item_main").FirstOrDefault();
+                HtmlNode title = main.CssSelect(".ResultsList_item_title a").FirstOrDefault();
+                if (title != null)
+                {
+                    string titleString = title.InnerText?.Replace("\n", "")?.Replace("\r", "")?.Trim() ?? "";
+                    if (titleString.Contains(":"))
+                    {
+                        n++;
+                        // get ISRCTN id
+                        colonPos = titleString.IndexOf(":");
+                        ISRCTNNumber = titleString.Substring(0, colonPos - 1).Trim();
+                        study_name = titleString.Substring(colonPos).Trim();
+                        remote_link = "https://www.isrctn.com/" + ISRCTNNumber;
+
+                        studies.Add(new ISCTRN_Study(n, ISRCTNNumber, study_name, remote_link));
+                    }
+                }
+            }
+            return studies;
+        }
+
+
         public ISCTRN_Record GetFullDetails(WebPage detailsPage, string ISRCTNNumber)
         {
             ISCTRN_Record st = new ISCTRN_Record();
             st.isctrn_id = ISRCTNNumber;
 
+            // heading data in a header tag
+
             var titles = detailsPage.Find("header", By.Class("ComplexTitle")).FirstOrDefault();
             st.doi = InnerContent(titles.SelectSingleNode("div[1]/span[2]"));
             st.study_name = InnerContent(titles.SelectSingleNode("div[1]/h1[1]"));
 
+            // Basic metadata in an 'Info_aside' div, split into 2 dl tags
+            // each with pairs of dt / dd tags -
+            // in each case dt tags identified, value obtained from folowwing sibling
+
             var meta = detailsPage.Find("div", By.Class("Info_aside")).FirstOrDefault();
 
-            var condition = meta.SelectSingleNode("dl[1]/dt[text()='Condition category']");
-            st.condition_category = InnerContent(condition.SelectSingleNode("following-sibling::dd[1]"));
-            var assigned = meta.SelectSingleNode("dl[1]/dt[text()='Date assigned']");
-            st.date_assigned = GetDate(assigned.SelectSingleNode("following-sibling::dd[1]"));
-            var edited = meta.SelectSingleNode("dl[1]/dt[text()='Last edited']");
-            st.last_edited = GetDate(edited.SelectSingleNode("following-sibling::dd[1]"));
+            var sub_date = meta.SelectSingleNode("dl[1]/dt[text()='Submission date']");
+            st.submission_date = GetDate(sub_date.SelectSingleNode("following-sibling::dd[1]"));
+            var reg_date = meta.SelectSingleNode("dl[1]/dt[text()='Registration date']");
+            st.registration_date = GetDate(reg_date.SelectSingleNode("following-sibling::dd[1]"));
+            var last_edited = meta.SelectSingleNode("dl[1]/dt[text()='Last edited']");
+            st.last_edited = GetDate(last_edited.SelectSingleNode("following-sibling::dd[1]"));
 
-
-            var reg_type = meta.SelectSingleNode("dl[2]/dt[text()='Prospective/Retrospective']");
-            st.registration_type = InnerContent(reg_type.SelectSingleNode("following-sibling::dd[1]"));
+            var rec_status = meta.SelectSingleNode("dl[2]/dt[text()='Recruitment status']");
+            st.recruitment_status = InnerContent(rec_status.SelectSingleNode("following-sibling::dd[1]"));
             var trial_status = meta.SelectSingleNode("dl[2]/dt[text()='Overall trial status']");
             st.trial_status = InnerContent(trial_status.SelectSingleNode("following-sibling::dd[1]"));
-            var recruitment_status = meta.SelectSingleNode("dl[2]/dt[text()='Recruitment status']");
-            st.recruitment_status = InnerContent(recruitment_status.SelectSingleNode("following-sibling::dd[1]"));
+            var cond_cat = meta.SelectSingleNode("dl[2]/dt[text()='Condition category']");
+            st.condition_category = InnerContent(cond_cat.SelectSingleNode("following-sibling::dd[1]"));
+
 
             List<Item> study_contacts = new List<Item>();
             List<Item> study_identifiers = new List<Item>();
@@ -64,27 +106,62 @@ namespace DataDownloader.isrctn
             List<Item> study_publications = new List<Item>();
             List<Item> study_additional_files = new List<Item>();
             List<Item> study_notes = new List<Item>();
+            List<Output> study_outputs = new List<Output>();
 
             var section_div = detailsPage.Find("div", By.Class("l-Main")).FirstOrDefault();
+            var article = section_div.SelectSingleNode("article[1]");
 
-            var summary_header = section_div.SelectSingleNode("article[1]/section[1]/div[1]/div[1]/h3[text()='Plain English Summary']");
+            var summary_header = article.SelectSingleNode("section[1]/div[1]/div[1]/h3[text()='Plain English Summary']");
             string summary_text = InnerLargeContent(summary_header.SelectSingleNode("following-sibling::p[1]"));
             if (summary_text != "")
             {
+                // try and standardise the text, or atr least phrases within it
+                // by default the summary text is the whole of the 'Plain English Summary'; but this often
+                // contains inform,ation repweeated in a structured form elsewhere.
+                // Attempt here is to get the two most relevant sections only.
+
+                summary_text = summary_text.Replace("&nbsp;", " ");
+                summary_text = summary_text.Replace("  ", " ");
                 summary_text = summary_text.Replace("<br>", "<br/>");
-                summary_text = summary_text.Replace("study aims <br/>", "study aims<br/>");
-                
-                if (summary_text.Contains("Background and study aims<br/>") && summary_text.Contains("<br/><br/>Who can participate?"))
+                summary_text = summary_text.Replace("<br/> <br/>", "<br/><br/>");
+
+                bool use_stext = false;
+                string stext = summary_text;
+
+                stext = stext.Replace("aims <br/>", "aims<br/>");
+                stext = stext.Replace("aims:<br/>", "aims<br/>");
+                stext = stext.Replace("aim <br/>", "aims<br/>");
+                stext = stext.Replace("aim<br/>", "aims<br/>");
+
+                stext = stext.Replace("study involve? <br/>", "study involve?<br/>");
+                stext = stext.Replace("<br/><br/>What are the benefits", "<br/><br/>What are the possible");
+
+                if (stext.Contains("aims<br/>") && stext.Contains("<br/><br/>Who can participate?"))
                 {
-                    int startpos = "Background and study aims<br/>".Length;
-                    int endpos = summary_text.IndexOf("<br/><br/>Who can participate?");
-                    summary_text = summary_text.Substring(startpos, endpos - startpos);
-                    
+                    int startpos = stext.IndexOf("aims<br/>") + "aims<br/>".Length;
+                    int endpos = stext.IndexOf("<br/><br/>Who can participate?");
+                    if (endpos > startpos)
+                    {
+                        stext = stext.Substring(startpos, endpos - startpos).Trim();
+                        use_stext = true;
+                    }
                 }
-                st.background = summary_text;
+
+                if (stext.Contains("What does the study involve?<br/>") && stext.Contains("<br/><br/>What are the possible"))
+                {
+                    int startpos = stext.IndexOf("Background and study aims<br/>") + "Background and study aims<br/>".Length;
+                    int endpos = stext.IndexOf("<br/><br/>What are the possible benefits");
+                    if (endpos > startpos)
+                    {
+                        stext += stext.Substring(startpos, endpos - startpos);
+                    }
+                }
+                
+                st.background = use_stext ? stext : summary_text;
             }
 
-            var website_header = section_div.SelectSingleNode("article[1]/section[1]/div[1]/div[1]/h3[text()='Trial website']");
+           
+            var website_header = article.SelectSingleNode("section[1]/div[1]/div[1]/h3[text()='Trial website']");
             if (website_header != null)
             {
                 var website_info = website_header.SelectSingleNode("following-sibling::p[1]");
@@ -95,7 +172,7 @@ namespace DataDownloader.isrctn
 
             string item_name, item_value;
 
-            var contacts = section_div
+            var contacts = article
                             .SelectNodes("//section/div[1]/h2[text()='Contact information']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (contacts != null)
@@ -108,6 +185,14 @@ namespace DataDownloader.isrctn
                     if (item_name == "ORCID ID")
                     {
                         item_value = InnerContent(contacts[i].SelectSingleNode("following-sibling::p[1]/a[1]"));
+                        if (item_value.StartsWith("http://orcid.org/"))
+                        {
+                            item_value = item_value.Substring("http://orcid.org/".Length);
+                        }
+                        if (item_value.StartsWith("https://orcid.org/"))
+                        {
+                            item_value = item_value.Substring("https://orcid.org/".Length);
+                        }
                     }
                     else if (item_name == "Contact details")
                     {
@@ -119,7 +204,6 @@ namespace DataDownloader.isrctn
                         item_value = InnerContent(contacts[i].SelectSingleNode("following-sibling::p[1]")); 
                     }
 
-
                     if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
                     {
                         s++;
@@ -129,7 +213,7 @@ namespace DataDownloader.isrctn
             }
 
 
-            var identifiers = section_div
+            var identifiers = article
                             .SelectNodes("//section/div[1]/h2[text()='Additional identifiers']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (identifiers != null)
@@ -139,6 +223,7 @@ namespace DataDownloader.isrctn
                 {
                     item_name = identifiers[i].InnerText;
                     item_value = InnerContent(identifiers[i].SelectSingleNode("following-sibling::p[1]"));
+
                     if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
                     {
                         s++; 
@@ -148,7 +233,7 @@ namespace DataDownloader.isrctn
             }
 
 
-            var info = section_div
+            var info = article
                             .SelectNodes("//section/div[1]/h2[text()='Study information']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (info != null)
@@ -160,6 +245,7 @@ namespace DataDownloader.isrctn
                     if (item_name != "Intervention" && item_name != "Secondary outcome measures")
                     {
                         item_value = InnerLargeContent(info[i].SelectSingleNode("following-sibling::p[1]"));
+
                         if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
                         {
                             s++; 
@@ -170,7 +256,7 @@ namespace DataDownloader.isrctn
             }
 
 
-            var eligibility = section_div
+            var eligibility = article
                             .SelectNodes("//section/div[1]/h2[text()='Eligibility']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (eligibility != null)
@@ -192,7 +278,7 @@ namespace DataDownloader.isrctn
             }
 
 
-            var locations = section_div
+            var locations = article
                             .SelectNodes("//section/div[1]/h2[text()='Locations']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (locations != null)
@@ -201,12 +287,25 @@ namespace DataDownloader.isrctn
                 {
                     int s = 0; 
                     item_name = locations[i].InnerText;
-                    if (item_name != "Trial participating centre")
+                    if (item_name == "Countries of recruitment")
                     {
                         item_value = InnerContent(locations[i].SelectSingleNode("following-sibling::p[1]"));
+
                         if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
                         {
                             s++; 
+                            study_locations.Add(new Item(s, item_name, item_value));
+                        }
+                    }
+
+                    if (item_name == "Trial participating centre")
+                    {
+                        item_value = InnerContent(locations[i].SelectSingleNode("following-sibling::p[1]/b[1]"));
+
+                        if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
+                        {
+                            // N.B get emboldened part is facility title (address portion too variable)
+                            s++;
                             study_locations.Add(new Item(s, item_name, item_value));
                         }
                     }
@@ -214,7 +313,7 @@ namespace DataDownloader.isrctn
             }
 
 
-            var sponsor = section_div
+            var sponsor = article
                             .SelectNodes("//section/div[1]/h2[text()='Sponsor information']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (sponsor != null)
@@ -236,7 +335,7 @@ namespace DataDownloader.isrctn
             }
 
 
-            var funders = section_div
+            var funders = article
                             .SelectNodes("//section/div[1]/h2[text()='Funders']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (funders != null)
@@ -245,7 +344,6 @@ namespace DataDownloader.isrctn
                 for (int i = 0; i < funders.Length; i++)
                 {
                     item_name = funders[i].InnerText;
-
                     item_value = InnerContent(funders[i].SelectSingleNode("following-sibling::p[1]"));
                     if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
                     {
@@ -257,28 +355,65 @@ namespace DataDownloader.isrctn
 
 
             // <a> references may be included and need to be processed
-            var publications = section_div
+            var publications = article
                             .SelectNodes("//section/div[1]/h2[text()='Results and Publications']/following-sibling::div[1]/h3")?
                             .ToArray();
             if (publications != null)
             {
-                int s = 0; 
+                int s = 0;
+                HtmlNode output_table = null;
                 for (int i = 0; i < publications.Length; i++)
                 {
                     item_name = publications[i].InnerText;
-
-                    item_value = InnerLargeContent(publications[i].SelectSingleNode("following-sibling::p[1]"));
-                    if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
+                    if (item_name != "Trial outputs")
                     {
-                        s++; 
-                        study_publications.Add(new Item(s, item_name, item_value));
-                    }
+                        item_value = InnerLargeContent(publications[i].SelectSingleNode("following-sibling::p[1]"));
 
+                        if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
+                        {
+                            s++;
+                            study_publications.Add(new Item(s, item_name, item_value));
+                        }
+                    }
+                    else
+                    {
+                        output_table = publications[i].SelectSingleNode("following-sibling::div[1]/table[1]/tbody[1]");
+                    }
+                }
+
+                if (output_table != null)
+                {
+                    var outputs = output_table.SelectNodes("tr")?.ToArray();
+                    if (outputs != null)
+                    {
+                        for (int j = 0; j < outputs.Length; j++)
+                        {
+                            var this_row = outputs[j];
+                            var output_attributes = this_row.SelectNodes("td")?.ToArray();
+                            if (output_attributes != null)
+                            {
+                                string type = InnerContent(output_attributes[0]);
+                                string url = output_attributes[0]?.SelectSingleNode("a[1]")?.GetAttributeValue("href");
+                                if (!string.IsNullOrEmpty(url))
+                                {
+                                    url = url.StartsWith("/") ? "https://www.isrctn.com" + url : "https://www.isrctn.com/" + url;
+                                }
+                                string dets = InnerContent(output_attributes[1]);
+                                DateTime? created = GetDate(output_attributes[2]);
+                                DateTime? added = GetDate(output_attributes[3]);
+                                string pr_reviewed = InnerContent(output_attributes[4]);
+                                string pt_facing = InnerContent(output_attributes[5]);
+
+                                study_outputs.Add(new Output(type, url, dets, created, added, pr_reviewed, pt_facing));
+                            }
+                        }
+                    }
                 }
             }
 
+
             // <a> references may be included and need to be processed
-            var additional_files = section_div
+            var additional_files = article
                             .SelectNodes("//section/div[1]/h2[text()='Additional files']/following-sibling::div[1]/ul/li")?
                             .ToArray();
             if (additional_files != null)
@@ -296,14 +431,15 @@ namespace DataDownloader.isrctn
                     string href = item_text.Substring(ref_start, ref_end - ref_start);
                     if (href != "")
                     {
-                        s++; 
-                        study_additional_files.Add(new Item(s, item_name, "https://www.isrctn.com/" + href));
+                        s++;
+                        href = href.StartsWith("/") ? "https://www.isrctn.com" + href : "https://www.isrctn.com/" + href;
+                        study_additional_files.Add(new Item(s, item_name, href));
                     }
                 }
             }
 
 
-            var notes = section_div
+            var notes = article
                             .SelectNodes("//section/div[1]/h2[text()='Editorial Notes']/following-sibling::div[1]").FirstOrDefault();
             item_value = InnerLargeContent(notes);
             if (item_value != "" && item_value != "N/A" && item_value != "Not Applicable" && item_value != "Nil known")
@@ -323,6 +459,8 @@ namespace DataDownloader.isrctn
             st.publications = study_publications;
             st.additional_files = study_additional_files;
             st.notes = study_notes;
+            st.outputs = study_outputs;
+
             return st;
         }
 

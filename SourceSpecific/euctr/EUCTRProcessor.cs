@@ -30,8 +30,12 @@ namespace DataDownloader.euctr
             }
         }
 
-        public List<EUCTR_Summmary> GetStudyList(WebPage homePage)
+ 
+        public List<EUCTR_Summmary> GetStudyList(WebPage homePage, bool doAll = false)
         {
+            // doAll parameter, by default false sets the do_download
+            // property of the summary record. If true all records will be downloaded.
+
             List<EUCTR_Summmary> summaries = new List<EUCTR_Summmary>();
 
             var pageContent = homePage.Find("div", By.Class("results"));
@@ -46,115 +50,158 @@ namespace DataDownloader.euctr
                 string sponsor_id = InnerValue(idDetails[1]);
                 string start_date = InnerValue(idDetails[2]);
 
-                summaries.Add(new EUCTR_Summmary(euctr_id, sponsor_id, start_date));
+                summaries.Add(new EUCTR_Summmary(euctr_id, sponsor_id, start_date, doAll));
             }
             return summaries;
         }
 
-        public string GetFullSummaries(WebPage homePage, List<EUCTR_Summmary> summaries)
+
+        public EUCTR_Summmary DeriveFullSummary(WebPage homePage, EUCTR_Summmary s, int i)
         {
             // receives reference to the search page and the summary list
             // Completes summary details if the etudy is to be downloaded
 
             var pageContent = homePage.Find("div", By.Class("results"));
             HtmlNode[] studyBoxes = pageContent.CssSelect(".result").ToArray();
+
+            HtmlNode box = studyBoxes[i];
             
-            for (int i = 0; i < summaries.Count; i++)
+            //check that these match...
+            // Ids and start date - three td elements in a fixed order in first row.
+            HtmlNode[] studyDetails = box.Elements("tr").ToArray();
+            HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
+
+            string euctr_id = InnerValue(idDetails[0]);
+            if (euctr_id != s.eudract_id)
             {
-                EUCTR_Summmary s = summaries[i];
-                if (s.do_download)
+                // we have a problem!
+                string message = "At position " + i.ToString() + " on " + homePage.BaseUrl.ToString() +
+                                    " had a EUCTR id of " + s.eudract_id +
+                                    " in the summary list and an id of " + euctr_id +
+                                    " on the page ";
+                s.trial_status = message;
+            }
+            else
+            {
+                // Get other details in the box on the search page.
+
+                // sponsor name in second row - also extracted later from the details page
+                s.sponsor_name = InnerValue(studyDetails[1]);
+                if (s.sponsor_name.Contains("[...]"))
                 {
-                    HtmlNode box = studyBoxes[i];
-                    //check that these match...
+                    s.sponsor_name = s.sponsor_name.Replace("[...]", "");
+                }
 
-                    // Ids and start date - three td elements in a fixed order in first row.
-                    HtmlNode[] studyDetails = box.Elements("tr").ToArray();
-                    HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
+                // medical conditiona as a text description
+                s.medical_condition = InnerValue(studyDetails[3]);
 
-                    string euctr_id = InnerValue(idDetails[0]);
-                    if (euctr_id != s.eudract_id)
+                // Disease (MedDRA details) - five td elements in a fixed order, 
+                // if they are there at all appear in a nested table, class = 'meddra'.
+
+                List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
+                HtmlNode meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
+                if (meddraTable != null)
+                {
+                    // this table has at 2 least rows, the first with the headers (so row 0 can be ignored)
+                    HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
+                    for (int k = 1; k < disDetails.Count(); k++)
                     {
-                        // we have a problem!
-                        string message = "At position " + i.ToString() + " on " + homePage.BaseUrl.ToString() +
-                                         " had a EUCTR id of " + s.eudract_id +
-                                         " in the summary list and an id of " + euctr_id +
-                                         " on the page ";
-                        return message;
+                        MeddraTerm stm = new MeddraTerm();
+                        HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
+                        stm.version = meddraDetails[0].InnerText?.Trim() ?? "";
+                        stm.soc_term = meddraDetails[1].InnerText?.Trim() ?? "";
+                        stm.code = meddraDetails[2].InnerText?.Trim() ?? "";
+                        stm.term = meddraDetails[3].InnerText?.Trim() ?? "";
+                        stm.level = meddraDetails[4].InnerText?.Trim() ?? "";
+                        meddra_terms.Add(stm);
                     }
 
-                    // Get other details in the box on the search page.
+                    s.meddra_terms = meddra_terms;
+                }
 
-                    // sponsor name in second row - also extracted later from the details page
-                    s.sponsor_name = InnerValue(studyDetails[1]);
-                    if (s.sponsor_name.Contains("[...]"))
+                // population age and gender - 2 td elements in a fixed order
+                HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
+                s.population_age = InnerValue(popDetails[0]);
+                s.gender = InnerValue(popDetails[1]);
+
+                // Protocol links 
+                // These are often multiple and we need to consider the whole
+                // list to get the countries involved.
+
+                List<Country> countries = new List<Country>();
+                List<HtmlNode> links = studyDetails[6].CssSelect("a").ToList();
+                List<HtmlNode> statuses = studyDetails[6].CssSelect("span").ToList();
+                char[] parantheses = { '(', ')' };
+
+                // Because of an additional initial 'Trial protocol:' span
+                // there should be links + 1 span (status) numbers
+                // first valid status found used as overall trial status
+
+                if (links.Count == statuses.Count - 1)
+                {
+                    // get country names and study status
+                    // For GB status no longer available for ongoing studies
+
+                    for (int j = 0; j < links.Count; j++)
                     {
-                        s.sponsor_name = s.sponsor_name.Replace("[...]", "");
-                    }
-
-                    // medical conditiona as a text description
-                    s.medical_condition = InnerValue(studyDetails[3]);
-
-                    // Disease (MedDRA details) - five td elements in a fixed order, 
-                    // if they are there at all appear in a nested table, class = 'meddra'.
-
-                    List<MeddraTerm> meddra_terms = new List<MeddraTerm>();
-                    HtmlNode meddraTable = studyDetails[4].CssSelect(".meddra").FirstOrDefault();
-                    if (meddraTable != null)
-                    {
-                        // this table has at 2 least rows, the first with the headers (so row 0 can be ignored)
-                        HtmlNode[] disDetails = meddraTable.Descendants("tr").ToArray();
-                        for (int k = 1; k < disDetails.Count(); k++)
+                        int status_num = 0;
+                        string country_code = links[j].InnerText;
+                        string country_name = GetCountryName(country_code);
+                        if (country_name != "")
                         {
-                            MeddraTerm stm = new MeddraTerm();
-                            HtmlNode[] meddraDetails = disDetails[k].Elements("td").ToArray();
-                            stm.version = meddraDetails[0].InnerText?.Trim() ?? "";
-                            stm.soc_term = meddraDetails[1].InnerText?.Trim() ?? "";
-                            stm.code = meddraDetails[2].InnerText?.Trim() ?? "";
-                            stm.term = meddraDetails[3].InnerText?.Trim() ?? "";
-                            stm.level = meddraDetails[4].InnerText?.Trim() ?? "";
-                            meddra_terms.Add(stm);
+                            string study_status = statuses[j + 1].InnerText.Trim(parantheses);
+                            if (study_status != "GB - no longer in EU/EEA")
+                            {
+                                countries.Add(new Country(country_name, study_status));
+                                status_num++;
+                                if (status_num == 1)
+                                {
+                                    s.trial_status = study_status;
+                                }
+                            }
+                            else
+                            {
+                                countries.Add(new Country(country_name, null));
+                            }
                         }
-
-                        s.meddra_terms = meddra_terms;
                     }
+                }
+                else
+                {
+                    // just get the country names
 
-                    // population age and gender - 2 td elements in a fixed order
-                    HtmlNode[] popDetails = studyDetails[5].CssSelect("td").ToArray();
-                    s.population_age = InnerValue(popDetails[0]);
-                    s.gender = InnerValue(popDetails[1]);
-
-                    // Protocol links 
-                    // These are often multiple but - for the time being at least
-                    // we take the first and use that to obtain further details
-                    HtmlNode link = studyDetails[6].CssSelect("a").FirstOrDefault();
-                    s.details_url = "https://www.clinicaltrialsregister.eu" + link.Attributes["href"].Value;
-
-                    HtmlNode status_node = studyDetails[6].CssSelect("span.status").FirstOrDefault();
-                    if (status_node != null)
+                    for (int j = 0; j < links.Count; j++)
                     {
-                        string status = status_node.InnerText ?? "";
-                        // remove surrounding brackets
-                        if (status != "" && status.StartsWith("(") && status.Length > 2)
+                        string country_code = links[j].InnerText;
+                        string country_name = GetCountryName(country_code);
+                        if (country_name != "")
                         {
-                            status = status.Substring(1, status.Length - 2);
+                            countries.Add(new Country(country_name, ""));
                         }
-                        s.trial_status = status;
                     }
+                }
 
-                    // Results link, if any
-                    HtmlNode resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
-                    if (resultLink != null)
-                    {
-                        s.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
+                s.countries = countries;
 
-                        // if results link present and Status not completed make status "Completed"
-                        // (some entries may not have been updated)
-                        if (s.trial_status != "Completed") s.trial_status = "Completed";
-                    }
+                // Only the first listed country used to obtain the protocol details and overall trial status
+
+                s.details_url = "https://www.clinicaltrialsregister.eu" + links[0].Attributes["href"].Value;
+
+                // Results link, if any
+                HtmlNode resultLink = studyDetails[7].CssSelect("a").FirstOrDefault();
+
+                if (resultLink != null)
+                {
+                    s.results_url = "https://www.clinicaltrialsregister.eu" + resultLink.Attributes["href"].Value;
+
+                    // if results link present and Status not completed make status "Completed"
+                    // (some entries may not have been updated)
+
+                    if (s.trial_status != "Completed") s.trial_status = "Completed";
                 }
             }
 
-            return "OK";       
+            return s;       
         }
 
   
@@ -206,7 +253,7 @@ namespace DataDownloader.euctr
             var details_rows = study_details.CssSelect("tbody tr").ToArray();
             if (details_rows != null)
             {
-                st.features = GetStudyFeatures(details_rows);
+                st.features = GetStudyFeatures(details_rows, st.countries);
             }
 
             var population = detailsPage.Find("table", By.Id("section-f")).FirstOrDefault();
@@ -440,7 +487,7 @@ namespace DataDownloader.euctr
         }
 
 
-        private List<DetailLine> GetStudyFeatures(HtmlNode[] details_rows)
+        private List<DetailLine> GetStudyFeatures(HtmlNode[] details_rows, List<Country> summ_countries)
         {
             List<DetailLine> study_features = new List<DetailLine>();
             
@@ -451,6 +498,7 @@ namespace DataDownloader.euctr
                 {
                     var cells = row.CssSelect("td").ToArray();
                     string code = cells[0].InnerText;
+
                     if (code.Contains("E.1.1") || code.Contains("E.2"))
                     {
                         DetailLine line = new DetailLine();
@@ -524,6 +572,37 @@ namespace DataDownloader.euctr
                             study_features.Add(line);
                         }
                     }
+
+
+                    if (code == "E.8.6.3")
+                    {
+                        //may have a list of one or more countries in an internal table
+
+                        var inner_table = cells[2].CssSelect("table");
+                        var inner_rows = inner_table.CssSelect("tr").ToArray();
+                        if (inner_rows.Count() > 0)
+                        {
+                            foreach (HtmlNode inner_row in inner_rows)
+                            {
+                                var inner_cell = inner_row.CssSelect("td").FirstOrDefault();
+                                string value = HttpUtility.HtmlDecode(inner_cell.InnerText).Trim();
+                                bool add_country = true;
+                                foreach (Country c in summ_countries)
+                                {
+                                    if (c.name == value)
+                                    {
+                                        add_country = false;
+                                        break;
+                                    }
+                                }
+                                if (add_country)
+                                {
+                                    summ_countries.Add(new Country(value, null));
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
 
@@ -602,6 +681,138 @@ namespace DataDownloader.euctr
             return node.CssSelect(".label").FirstOrDefault().InnerText?.Trim() ?? "";
         }
 
-        
+        private string GetCountryName(string country_code)
+        {
+            string country_name = "";
+            switch (country_code)
+            {
+                case "GB":
+                    {
+                        country_name = "United Kingdom";  break;
+                    }
+                case "FR":
+                    {
+                        country_name = "France"; break;
+                    }
+                case "IT":
+                    {
+                        country_name = "Italy"; break;
+                    }
+                case "DE":
+                    {
+                        country_name = "Germany"; break;
+                    }
+                case "ES":
+                    {
+                        country_name = "Spain"; break;
+                    }
+                case "PT":
+                    {
+                        country_name = "Portugal"; break;
+                    }
+                case "BE":
+                    {
+                        country_name = "Belgium"; break;
+                    }
+                case "NL":
+                    {
+                        country_name = "Netherlands"; break;
+                    }
+                case "DK":
+                    {
+                        country_name = "Denmark"; break;
+                    }
+                case "SE":
+                    {
+                        country_name = "Sweden"; break;
+                    }
+                case "NO":
+                    {
+                        country_name = "Norway"; break;
+                    }
+                case "EE":
+                    {
+                        country_name = "Estonia"; break;
+                    }
+                case "FI":
+                    {
+                        country_name = "Finland"; break;
+                    }
+                case "PL":
+                    {
+                        country_name = "Poland"; break;
+                    }
+                case "RO":
+                    {
+                        country_name = "Romania"; break;
+                    }
+                case "CZ":
+                    {
+                        country_name = "Czechia"; break;
+                    }
+                case "SK":
+                    {
+                        country_name = "Slovakia"; break;
+                    }
+                case "SI":
+                    {
+                        country_name = "Slovenia"; break;
+                    }
+                case "BG":
+                    {
+                        country_name = "Bulgaria"; break;
+                    }
+                case "CY":
+                    {
+                        country_name = "Cyprus"; break;
+                    }
+                case "MT":
+                    {
+                        country_name = "Malta"; break;
+                    }
+                case "AT":
+                    {
+                        country_name = "Austria"; break;
+                    }
+                case "HR":
+                    {
+                        country_name = "Croatia"; break;
+                    }
+                case "GR":
+                    {
+                        country_name = "Greece"; break;
+                    }
+                case "HU":
+                    {
+                        country_name = "Hungary"; break;
+                    }
+                case "IS":
+                    {
+                        country_name = "Iceland"; break;
+                    }
+                case "IE":
+                    {
+                        country_name = "Ireland"; break;
+                    }
+                case "LV":
+                    {
+                        country_name = "Latvia"; break;
+                    }
+                case "LI":
+                    {
+                        country_name = "Liechtenstein"; break;
+                    }
+                case "LT":
+                    {
+                        country_name = "Lithuania"; break;
+                    }
+                case "LU":
+                    {
+                        country_name = "Luxembourg"; break;
+                    }
+            }
+            return country_name;
+        }
+
     }
 }

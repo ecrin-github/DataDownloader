@@ -155,6 +155,10 @@ namespace DataDownloader
             LogLine("filter" + filter_id);
             string ignore_recent_days = (args.skip_recent_days == null) ? " was not provided" : " is " + args.skip_recent_days.ToString();
             LogLine("ignore recent downloads parameter" + ignore_recent_days);
+            string start_page = (args.start_page == null) ? " was not provided" : " is " + args.start_page.ToString();
+            LogLine("start page" + start_page);
+            string end_page = (args.end_page == null) ? " was not provided" : " is " + args.end_page.ToString();
+            LogLine("end page" + end_page);
 
             string previous_saf_ids = "";
             if (args.previous_searches.Count() > 0)
@@ -445,6 +449,7 @@ namespace DataDownloader
                     where last_downloaded::date >= now()::date - " + days_ago.ToString() + @"
                     and sd_id = '" + sd_sid + @"'
                     and source_id = " + source_id.ToString();
+
             using (var conn = new NpgsqlConnection(connString))
             {
                 return conn.Query<int>(sql_string).FirstOrDefault() > 0 ? true : false;

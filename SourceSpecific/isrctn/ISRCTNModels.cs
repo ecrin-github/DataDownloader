@@ -3,25 +3,35 @@ using System.Collections.Generic;
 
 namespace DataDownloader.isrctn
 {
-
-    class Study
+  
+    public class ISCTRN_Study
     {
-        public int Id { get; set; }
-        public string ISRCTNNumber { get; set; }
-        public string StudyName { get; set; }
-        public string OverallStatus { get; set; }
-        public string RecruitmentStatus { get; set; }
-        public string DateAssigned { get; set; }
+        public int id { get; set; }
+        public string ISRCTN_number { get; set; }
+        public string study_name { get; set; }
+        public string remote_link { get; set; }
+        
+        public ISCTRN_Study()
+        { }
+
+        public ISCTRN_Study(int _id, string _ISRCTN_number, string _study_name, string _remote_link)
+        {
+            id = _id;
+            ISRCTN_number = _ISRCTN_number;
+            study_name = _study_name;
+            remote_link = _remote_link;
+        }
     }
+  
 
     public class ISCTRN_Record
     {
-        public int id { get; set; }
         public string isctrn_id { get; set; }
         public string doi { get; set; }
         public string study_name { get; set; }
         public string condition_category { get; set; }
-        public DateTime? date_assigned { get; set; }
+        public DateTime? submission_date { get; set; }
+        public DateTime? registration_date { get; set; }
         public DateTime? last_edited { get; set; }
         public string registration_type { get; set; }
         public string trial_status { get; set; }
@@ -40,6 +50,7 @@ namespace DataDownloader.isrctn
         public List<Item> publications { get; set; }
         public List<Item> additional_files { get; set; }
         public List<Item> notes { get; set; }
+        public List<Output> outputs { get; set; }
     }
 
     public class Item
@@ -58,4 +69,33 @@ namespace DataDownloader.isrctn
         public Item()
         { }
     }
+
+    public class Output
+    {
+        public string output_type { get; set; }
+        public string output_url { get; set; }
+        public string details { get; set; }
+        public DateTime? date_created { get; set; }
+        public DateTime? date_added { get; set; }
+        public string peer_reviewed { get; set; }
+        public string patient_facing { get; set; }
+
+        public Output()
+        { }
+
+        public Output(string _output_type, string _output_url, string _details, DateTime? _date_created,
+            DateTime? _date_added , string _peer_reviewed , string _patient_facing)
+        {
+            output_type = _output_type;
+            output_url = _output_url;
+            details = _details;
+            date_created = _date_created;
+            date_added = _date_added;
+            peer_reviewed = _peer_reviewed;
+            patient_facing = _patient_facing;
+
+        }
+    }
+
+
 }
