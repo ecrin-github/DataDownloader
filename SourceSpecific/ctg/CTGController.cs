@@ -8,31 +8,33 @@ namespace DataDownloader.ctg
 {
     class CTG_Controller
     {
-        CTG_Processor processor;
-        Source source;
-        string file_base;
-        FileWriter file_writer;
-        int saf_id;
-        LoggingDataLayer logging_repo;
-        DateTime? cutoff_date;
-        XmlWriterSettings settings;
+        CTG_Processor _processor;
+        Source _source;
+        string _file_base;
+        FileWriter _file_writer;
+        int _saf_id;
+        DateTime? _cutoff_date;
+        XmlWriterSettings _settings;
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
 
-        public CTG_Controller(int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+        public CTG_Controller(int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            processor = new CTG_Processor();
-            source = _source;
+            _processor = new CTG_Processor();
+            _source = source;
 
-            file_base = source.local_folder;
-            saf_id = _saf_id;
-            file_writer = new FileWriter(source);
+            _file_base = source.local_folder;
+            _saf_id = saf_id;
+            _file_writer = new FileWriter(source);
 
-            logging_repo = _logging_repo;
-            cutoff_date = args.cutoff_date;
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
+            _cutoff_date = args.cutoff_date;
 
             //webClient = new HttpClient();
-            settings = new XmlWriterSettings();
-            settings.Async = true;
-            settings.Encoding = System.Text.Encoding.UTF8;
+            _settings = new XmlWriterSettings();
+            _settings.Async = true;
+            _settings.Encoding = System.Text.Encoding.UTF8;
         }
 
 
@@ -47,15 +49,16 @@ namespace DataDownloader.ctg
 
             // If an update the new files will be added, the amended files replaced, as necessary.
             // In some cases a search may be carried out to identify the files without downloading them.
-            DownloadResult res = new DownloadResult();
-            ScrapingHelpers ch = new ScrapingHelpers(logging_repo);
 
-            if (cutoff_date != null)
+            DownloadResult res = new DownloadResult();
+            ScrapingHelpers ch = new ScrapingHelpers(_logging_helper);
+
+            if (_cutoff_date != null)
             {
-                cutoff_date = (DateTime)cutoff_date;
-                string year = cutoff_date.Value.Year.ToString();
-                string month = cutoff_date.Value.Month.ToString("00");
-                string day = cutoff_date.Value.Day.ToString("00");
+                _cutoff_date = (DateTime)_cutoff_date;
+                string year = _cutoff_date.Value.Year.ToString();
+                string month = _cutoff_date.Value.Month.ToString("00");
+                string day = _cutoff_date.Value.Day.ToString("00");
 
                 int min_rank = 1;
                 int max_rank = 20;
@@ -101,11 +104,11 @@ namespace DataDownloader.ctg
                                     // the details to be filed in source_study_data table.
 
                                     res.num_checked++;
-                                    ctg_basics st = processor.ObtainBasicDetails(full_study, logging_repo);
+                                    ctg_basics st = _processor.ObtainBasicDetails(full_study, _logging_helper);
 
                                     // Then write out file.
 
-                                    string folder_path = file_base + st.file_path;
+                                    string folder_path = _file_base + st.file_path;
                                     if (!Directory.Exists(folder_path))
                                     {
                                         Directory.CreateDirectory(folder_path);
@@ -119,18 +122,18 @@ namespace DataDownloader.ctg
                                     }
                                     catch(Exception e)
                                     {
-                                        logging_repo.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
+                                        _logging_helper.LogLine("Error in trying to save file at " + full_path + ":: " + e.Message);
                                     }
 
                                     // Record details of updated or new record in source_study_data.
 
-                                    bool added = logging_repo.UpdateStudyDownloadLog(source.id, st.sd_sid, st.remote_url, saf_id,
+                                    bool added = _monitor_repo.UpdateStudyDownloadLog(_source.id, st.sd_sid, st.remote_url, _saf_id,
                                                                       st.last_updated, full_path);
                                     res.num_downloaded++;
                                     if (added) res.num_added++;
                                 }
 
-                                if (i % 5 == 0) logging_repo.LogLine((i * 20).ToString() + " files processed");
+                                if (i % 5 == 0) _logging_helper.LogLine((i * 20).ToString() + " files processed");
                             }
 
                             // for testing

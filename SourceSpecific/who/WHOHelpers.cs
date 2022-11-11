@@ -6,13 +6,13 @@ namespace DataDownloader.who
 {
     public class WHOHelpers
     {
-        LoggingDataLayer logging_repo;
+        LoggingHelper _logging_helper;
         StringHelpers sh;
 
-        public WHOHelpers(LoggingDataLayer _logging_repo)
+        public WHOHelpers(LoggingHelper logging_helper)
         {
-            logging_repo = _logging_repo;
-            sh = new StringHelpers(_logging_repo);
+            _logging_helper = logging_helper;
+            sh = new StringHelpers(logging_helper);
         }
 
         public List<string> split_string(string instring)

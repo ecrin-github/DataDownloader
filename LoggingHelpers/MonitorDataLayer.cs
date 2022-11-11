@@ -5,20 +5,18 @@ using Npgsql;
 using PostgreSQLCopyHelper;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace DataDownloader
 {
-    public class LoggingDataLayer
+    public class MonitorDataLayer
     {
         private string connString;
         private Source source;
         private string sql_file_select_string;
-        private string logfile_startofpath;
-        private string logfile_path;
         private string pubmed_api_key;
-        private StreamWriter sw;
+        private LoggingHelper _logging_helper;
+
 
         /// <summary>
         /// Parameterless constructor is used to automatically build
@@ -26,8 +24,10 @@ namespace DataDownloader
         /// has the relevant credentials (but which is not stored in GitHub).
         /// </summary>
         /// 
-        public LoggingDataLayer()
+        public MonitorDataLayer(LoggingHelper logging_helper)
         {
+            _logging_helper = logging_helper;
+
             IConfigurationRoot settings = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json")
@@ -41,7 +41,8 @@ namespace DataDownloader
             builder.Database = "mon";
             connString = builder.ConnectionString;
 
-            logfile_startofpath = settings["logfilepath"];
+            // logfile_startofpath = settings["logfilepath"];
+
             pubmed_api_key = settings["pubmed_api_key"];
 
             sql_file_select_string = "select id, source_id, sd_id, remote_url, last_revised, ";
@@ -49,11 +50,7 @@ namespace DataDownloader
             sql_file_select_string += " last_harvest_id, last_harvested, last_import_id, last_imported ";
         }
 
-        // Used to check if a log file with a named source has been created
-        public string LogFilePath => logfile_path;
-
         public string PubmedAPIKey => pubmed_api_key;
-
 
         public Source FetchSourceParameters(int source_id)
         {
@@ -63,118 +60,7 @@ namespace DataDownloader
                 return source;
             }
         }
-
-
-        public void OpenLogFile(string source_file_name)
-        {
-            string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
-                              .Replace("-", "").Replace(":", "").Replace("T", " ");
-            if (source_file_name != null)
-            {
-                string file_name = source_file_name.Substring(source_file_name.LastIndexOf("\\") + 1);
-                logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string 
-                                           + " USING " + file_name + ".log";
-            }
-            else
-            {
-                logfile_path += logfile_startofpath + "DL " + source.database_name + " " + dt_string + ".log";
                 
-            }
-            sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
-        }
-
-        public void OpenNoSourceLogFile()
-        {
-            string dt_string = DateTime.Now.ToString("s", System.Globalization.CultureInfo.InvariantCulture)
-                              .Replace("-", "").Replace(":", "").Replace("T", " ");
-            logfile_path += logfile_startofpath + "DL No Source " + dt_string + ".log";
-            sw = new StreamWriter(logfile_path, true, System.Text.Encoding.UTF8);
-        }
-
-        public void LogLine(string message, string identifier = "")
-        {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string feedback = dt_string + message + identifier;
-            Transmit(feedback);
-         }
-
-        public void LogHeader(string message)
-        {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string header = dt_string + "**** " + message + " ****";
-           Transmit("");
-            Transmit(header);
-        }
-
-        public void LogError(string message)
-        {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            string error_message = dt_string + "***ERROR*** " + message;
-            Transmit("");
-            Transmit("+++++++++++++++++++++++++++++++++++++++");
-            Transmit(error_message);
-            Transmit("+++++++++++++++++++++++++++++++++++++++");
-            Transmit("");
-        }
-
-        public void LogRes(DownloadResult res)
-        {
-            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            Transmit("");
-            Transmit(dt_string + "**** " + "Download Result" + " ****");
-            Transmit(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
-            Transmit(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
-            Transmit(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
-        }
-
-        public void CloseLog()
-        {
-            LogHeader("Closing Log");
-            sw.Flush();
-            sw.Close();
-        }
-
-        private void Transmit(string message)
-        {
-            sw.WriteLine(message);
-            Console.WriteLine(message);
-        }
-
-        public string LogArgsParameters(Args args)
-        {
-
-            LogLine("****** DOWNLOAD ******");
-            LogHeader("Set up");
-            LogLine("source_id is " + args.source_id.ToString());
-            LogLine("type_id is " + args.type_id.ToString());
-            string file_name = (args.file_name == null) ? " was not provided" : " is " + args.file_name;
-            LogLine("file_name" + file_name);
-            string cutoff_date = (args.cutoff_date == null) ? " was not provided" : " is " + ((DateTime)args.cutoff_date).ToShortDateString();
-            LogLine("cutoff_date" + cutoff_date);
-            string filter_id = (args.filter_id == null) ? " was not provided" : " is " + args.filter_id.ToString();
-            LogLine("filter" + filter_id);
-            string ignore_recent_days = (args.skip_recent_days == null) ? " was not provided" : " is " + args.skip_recent_days.ToString();
-            LogLine("ignore recent downloads parameter" + ignore_recent_days);
-            string start_page = (args.start_page == null) ? " was not provided" : " is " + args.start_page.ToString();
-            LogLine("start page" + start_page);
-            string end_page = (args.end_page == null) ? " was not provided" : " is " + args.end_page.ToString();
-            LogLine("end page" + end_page);
-
-            string previous_saf_ids = "";
-            if (args.previous_searches.Count() > 0)
-            {
-                foreach (int i in args.previous_searches)
-                {
-                    LogLine("previous_search is " + i.ToString());
-                    previous_saf_ids += ", " + i.ToString();
-                }
-                previous_saf_ids = previous_saf_ids.Substring(2);
-            }
-            string no_logging = (args.filter_id == null) ? " was not provided" : " is " + args.no_logging;
-            LogLine("no_Logging" + no_logging);
-            return previous_saf_ids;
-        }
-
 
         public DateTime? ObtainLastDownloadDate(int source_id)
         {
@@ -318,50 +204,6 @@ namespace DataDownloader
             }
         }
         
-        /*
-        public bool UpdateStudyDownloadLogWithCompStatus(int source_id, string sd_id, string remote_url,
-                         int saf_id, bool? assume_complete, string full_path)
-        {
-            bool added = false; // indicates if a new record or update of an existing one
-
-            // Get the source data record and modify it
-            // or add a new one...
-            StudyFileRecord file_record = FetchStudyFileRecord(sd_id, source_id);
-            try
-            {
-                if (file_record == null)
-                {
-                    // this neeeds to have a new record
-                    // check last revised date....???
-                    // new record
-                    file_record = new StudyFileRecord(source_id, sd_id, remote_url, saf_id,
-                                                    assume_complete, full_path);
-                    InsertStudyFileRec(file_record);
-                    added = true;
-                }
-                else
-                {
-                    // update record
-                    file_record.remote_url = remote_url;
-                    file_record.last_saf_id = saf_id;
-                    file_record.assume_complete = assume_complete;
-                    file_record.download_status = 2;
-                    file_record.last_downloaded = DateTime.Now;
-                    file_record.local_path = full_path;
-
-                    // Update file record
-                    StoreStudyFileRec(file_record);
-                }
-
-                return added;
-            }
-            catch (Exception e)
-            {
-                LogError("In UpdateStudyDownloadLogWithCompStatus: " + e.Message);
-                return false;
-            }
-        }
-        */
 
         public bool UpdateStudyDownloadLog(int source_id, string sd_id, string remote_url,
                          int saf_id, DateTime? last_revised_date, string full_path)
@@ -401,7 +243,7 @@ namespace DataDownloader
             }
             catch(Exception e)
             {
-                LogError("In UpdateStudyDownloadLog: " + e.Message);
+                _logging_helper.LogError("In UpdateStudyDownloadLog: " + e.Message);
                 return false;
             }
         }
@@ -478,18 +320,24 @@ namespace DataDownloader
             }
         }
 
+    }
 
-        // Stores an 'extraction note', e.g. an unusual occurence or error found and
-        // logged during the extraction, in the associated table.
 
-        public void StoreExtractionNote(ExtractionNote ext_note)
-        {
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                conn.Insert<ExtractionNote>(ext_note);
-            }
-        }
+    public class MonitorCopyHelper
+    {
+        public PostgreSQLCopyHelper<StudyFileRecord> file_record_copyhelper =
+            new PostgreSQLCopyHelper<StudyFileRecord>("sf", "source_data_studies")
+                .MapInteger("source_id", x => x.source_id)
+                .MapVarchar("sd_id", x => x.sd_id)
+                .MapVarchar("remote_url", x => x.remote_url)
+                .MapInteger("last_saf_id", x => x.last_saf_id)
+                .MapTimeStampTz("last_revised", x => x.last_revised)
+                .MapBoolean("assume_complete", x => x.assume_complete)
+                .MapInteger("download_status", x => x.download_status)
+                .MapTimeStampTz("last_downloaded", x => x.last_downloaded)
+                .MapVarchar("local_path", x => x.local_path);
 
     }
+
 }
 

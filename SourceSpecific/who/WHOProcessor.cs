@@ -6,11 +6,11 @@ namespace DataDownloader.who
 {
     public class WHO_Processor
     {
-        public WHORecord ProcessStudyDetails(WHO_SourceRecord sr, LoggingDataLayer logging_repo)
+        public WHORecord ProcessStudyDetails(WHO_SourceRecord sr, LoggingHelper logging_helper)
         {
-            DateHelpers dh = new DateHelpers(logging_repo);
-            StringHelpers sh = new StringHelpers(logging_repo);
-            WHOHelpers wh = new WHOHelpers(logging_repo);
+            DateHelpers dh = new DateHelpers(logging_helper);
+            StringHelpers sh = new StringHelpers(logging_helper);
+            WHOHelpers wh = new WHOHelpers(logging_helper);
 
             WHORecord r = new WHORecord();
 

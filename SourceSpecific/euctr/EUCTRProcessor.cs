@@ -72,6 +72,7 @@ namespace DataDownloader.euctr
             HtmlNode[] idDetails = studyDetails[0].CssSelect("td").ToArray();
 
             string euctr_id = InnerValue(idDetails[0]);
+            
             if (euctr_id != s.eudract_id)
             {
                 // we have a problem!

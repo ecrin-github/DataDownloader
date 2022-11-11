@@ -11,29 +11,32 @@ namespace DataDownloader.yoda
 {
     class Yoda_Controller
     {
-        ScrapingBrowser browser;
-        YodaDataLayer yoda_repo;
-        Yoda_Processor processor;
-        Source source;		
-        string file_base;
-        FileWriter file_writer;
-        int saf_id;
-        int source_id;
-        LoggingDataLayer logging_repo;
-        int? days_ago;
+        ScrapingBrowser _browser;
+        YodaDataLayer _yoda_repo;
+        Yoda_Processor _processor;
+        Source _source;		
+        string _file_base;
+        FileWriter _file_writer;
+        int _saf_id;
+        int _source_id;
+        int? _days_ago;        
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
 
-        public Yoda_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+
+        public Yoda_Controller(ScrapingBrowser browser, int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            browser = _browser;
-            yoda_repo = new YodaDataLayer();
-            processor = new Yoda_Processor();
-            source = _source;
-            file_base = source.local_folder;
-            source_id = source.id;
-            saf_id = _saf_id;
-            file_writer = new FileWriter(source);
-            logging_repo = _logging_repo;
-            days_ago = args.skip_recent_days;
+            _browser = browser;
+            _yoda_repo = new YodaDataLayer();
+            _processor = new Yoda_Processor();
+            _source = source;
+            _file_base = source.local_folder;
+            _source_id = source.id;
+            _saf_id = saf_id;
+            _file_writer = new FileWriter(source);
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
+            _days_ago = args.skip_recent_days;
         }
 
         public DownloadResult LoopThroughPages()
@@ -43,7 +46,7 @@ namespace DataDownloader.yoda
             // update or focused download, as opposed to a full download.
 
             // set up initial study list.
-            ScrapingHelpers ch = new ScrapingHelpers(browser, logging_repo);
+            ScrapingHelpers ch = new ScrapingHelpers(_browser, _logging_helper);
             DownloadResult res = new DownloadResult();
             XmlSerializer writer = new XmlSerializer(typeof(Yoda_Record));
             List<Summary> all_study_list = new List<Summary>();
@@ -54,7 +57,7 @@ namespace DataDownloader.yoda
             WebPage firstPage = ch.GetPage(baseURL + "0");
             if (firstPage == null)
             {
-                logging_repo.LogError("Attempt to access first Yoda studies list page failed");
+                _logging_helper.LogError("Attempt to access first Yoda studies list page failed");
                 return null;
             }
             else
@@ -72,28 +75,27 @@ namespace DataDownloader.yoda
                 else
                 {
                     search_page_limit = 0;
-                    logging_repo.LogError("Unable to access record count total on first search page");
+                    _logging_helper.LogError("Unable to access record count total on first search page");
                     return null;
                 }
             }
 
             int search_page_failures = 0;
-            StringHelpers sh = new StringHelpers(logging_repo);
             for (int i = 0; i < search_page_limit; i++)
             {
                 WebPage searchPage = ch.GetPage(baseURL + i.ToString());
                 if (searchPage == null)
                 {
-                    logging_repo.LogError("Attempt to access Yoda studies list page (" + i.ToString() + " failed");
+                    _logging_helper.LogError("Attempt to access Yoda studies list page (" + i.ToString() + " failed");
                     search_page_failures++;
                     return null;
                 }
                 else
                 {
-                    List<Summary> page_study_list = processor.GetStudyInitialDetails(searchPage, i, sh);
+                    List<Summary> page_study_list = _processor.GetStudyInitialDetails(searchPage, i);
                     all_study_list.AddRange(page_study_list);
 
-                    logging_repo.LogLine("search page: " + i.ToString());
+                    _logging_helper.LogLine("search page: " + i.ToString());
                     System.Threading.Thread.Sleep(300);
                 }
             }
@@ -104,32 +106,40 @@ namespace DataDownloader.yoda
             }
 
             // Do a check on any possible id duplicates. Consider each study in turn.
+            // Duplicates rare but do occur (1 at least with two Yoda entries pointing to the sam page)
 
             int n = 0;
+            List<Summary> study_list = new List<Summary>();
+
             foreach (Summary sm in all_study_list)
             {
-                string this_id = sm.sd_sid;
                 n++;
-                int id_num = 0;
-                foreach (Summary s in all_study_list)
+                bool transfer_to_list = true;
+                                
+                string id_to_check = sm.sd_sid;
+                int s_pos = 0;
+                foreach (Summary s in study_list)
                 {
-                    if (this_id == s.sd_sid)
+                    s_pos++;
+                    if (id_to_check == s.sd_sid)
                     {
-                        id_num++;
+                        _logging_helper.LogLine("More than one id found for " + n.ToString() + ": " + sm.study_name);
+                        transfer_to_list = false;
                     }
                 }
-                if (id_num > 1)
+                
+                if (transfer_to_list)
                 {
-                    logging_repo.LogError("More than one id found for " + n.ToString() + ": " + sm.study_name);
+                    study_list.Add(sm);
                 }
             }
 
 
-            foreach (Summary sm in all_study_list)
+            foreach (Summary sm in study_list)
             {
                 // Get the details page...
                 // if record already downloaded today, ignore it... (may happen if re-running after an error)
-                if (days_ago == null || !logging_repo.Downloaded_recently(source_id, sm.sd_sid, (int)days_ago))
+                if (_days_ago == null || !_monitor_repo.Downloaded_recently(_source_id, sm.sd_sid, (int)_days_ago))
                 {
                     WebPage studyPage = ch.GetPage(sm.details_link);
                     res.num_checked++;
@@ -137,16 +147,16 @@ namespace DataDownloader.yoda
                     // Send the page off for processing
 
                     HtmlNode page = studyPage.Find("div", By.Class("region-content")).FirstOrDefault();
-                    Yoda_Record st = processor.GetStudyDetails(ch, yoda_repo, page, sm, logging_repo);
+                    Yoda_Record st = _processor.GetStudyDetails(ch, _yoda_repo, page, sm, _logging_helper);
 
                     if (st != null)
                     {
                         // Write out study record as XML.
 
                         string file_name = st.sd_sid + ".xml";
-                        string full_path = Path.Combine(file_base, file_name);
-                        file_writer.WriteYodaFile(writer, st, full_path);
-                        bool added = logging_repo.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, saf_id,
+                        string full_path = Path.Combine(_file_base, file_name);
+                        _file_writer.WriteYodaFile(writer, st, full_path);
+                        bool added = _monitor_repo.UpdateStudyDownloadLog(_source_id, st.sd_sid, st.remote_url, _saf_id,
                                                           st.last_revised_date, full_path);
                         res.num_downloaded++;
                         if (added) res.num_added++;
@@ -156,7 +166,7 @@ namespace DataDownloader.yoda
                         System.Threading.Thread.Sleep(500);
                     }
 
-                    logging_repo.LogLine(res.num_checked.ToString());
+                    _logging_helper.LogLine(res.num_checked.ToString());
                 }
             }
 

@@ -7,11 +7,11 @@ namespace DataDownloader
 
     public class StringHelpers
     {
-        LoggingDataLayer logging_repo;
+        LoggingHelper _logging_helper;
 
-        public StringHelpers(LoggingDataLayer _logging_repo)
+        public StringHelpers(LoggingHelper logging_helper)
         {
-            logging_repo = _logging_repo;
+            _logging_helper = logging_helper;
         }
 
         public string tidy_string(string instring)

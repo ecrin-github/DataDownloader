@@ -8,25 +8,27 @@ namespace DataDownloader.who
 {
     class WHO_Controller
     {
-        string sourcefile;
-        WHO_Processor processor;
-        Source source;		
-        string file_base;
-        FileWriter file_writer;
-        int saf_id;
-        int source_id;
-        LoggingDataLayer logging_repo;
+        string _sourcefile;
+        WHO_Processor _processor;
+        Source _source;		
+        string _file_base;
+        FileWriter _file_writer;
+        int _saf_id;
+        int _source_id;
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
 
-        public WHO_Controller(int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+        public WHO_Controller(int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            sourcefile = args.file_name;
-            processor = new WHO_Processor();
-            source = _source;
-            file_base = source.local_folder;
-            source_id = source.id;
-            saf_id = _saf_id;
-            file_writer = new FileWriter(source);
-            logging_repo = _logging_repo;
+            _sourcefile = args.file_name;
+            _processor = new WHO_Processor();
+            _source = source;
+            _file_base = source.local_folder;
+            _source_id = source.id;
+            _saf_id = saf_id;
+            _file_writer = new FileWriter(source);
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
         }
 
         public DownloadResult ProcessFile()
@@ -45,25 +47,25 @@ namespace DataDownloader.who
             // The file may be a 'full' set, or more commonly a weekly update file, but this
             // does not affect the file's processing.
 
-            DateHelpers dh = new DateHelpers(logging_repo);
+            DateHelpers dh = new DateHelpers(_logging_helper);
 
             XmlSerializer writer = new XmlSerializer(typeof(WHORecord));
             DownloadResult res = new DownloadResult();
 
-            using (var reader = new StreamReader(sourcefile, true))
+            using (var reader = new StreamReader(_sourcefile, true))
             {
                 using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
                     csv.Configuration.HasHeaderRecord = false;
                     var records = csv.GetRecords<WHO_SourceRecord>();
-                    logging_repo.LogLine(" Rows loaded into WHO record structure");
+                    _logging_helper.LogLine(" Rows loaded into WHO record structure");
 
                     // Consider each study in turn.
 
                     foreach (WHO_SourceRecord sr in records)
                     {
                         res.num_checked++;
-                        WHORecord r = processor.ProcessStudyDetails(sr, logging_repo);
+                        WHORecord r = _processor.ProcessStudyDetails(sr, _logging_helper);
 
                         if (r != null)
                         {
@@ -76,14 +78,14 @@ namespace DataDownloader.who
                             string file_name = r.sd_sid + ".xml";
                             string full_path = Path.Combine(file_base, file_name);
 
-                            file_writer.WriteWHOSourcedFile(writer, r, full_path);
-                            bool added = logging_repo.UpdateStudyDownloadLog(r.source_id, r.sd_sid, r.remote_url, saf_id,
+                            _file_writer.WriteWHOSourcedFile(writer, r, full_path);
+                            bool added = _monitor_repo.UpdateStudyDownloadLog(r.source_id, r.sd_sid, r.remote_url, _saf_id,
                                                                dh.FetchDateTimeFromISO(r.record_date), full_path);
                             res.num_downloaded++;
                             if (added) res.num_added++;
                         }
                         
-                        if (res.num_checked % 100 ==0) logging_repo.LogLine(res.num_checked.ToString());
+                        if (res.num_checked % 100 ==0) _logging_helper.LogLine(res.num_checked.ToString());
                     }
                 }
             }

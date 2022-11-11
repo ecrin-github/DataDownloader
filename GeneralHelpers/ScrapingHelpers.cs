@@ -17,33 +17,33 @@ namespace DataDownloader
 
     public class ScrapingHelpers
     {
-        LoggingDataLayer logging_repo;
-        ScrapingBrowser browser;
-        HttpClient webClient;
+        LoggingHelper _logging_helper;
+        ScrapingBrowser _browser;
+        HttpClient _webClient;
 
-        public ScrapingHelpers(ScrapingBrowser _browser, LoggingDataLayer _logging_repo)
+        public ScrapingHelpers(ScrapingBrowser browser, LoggingHelper logging_helper)
         {
-            logging_repo = _logging_repo;
-            browser = _browser;
-            webClient = new HttpClient();
+            _logging_helper = logging_helper;
+            _browser = browser;
+            _webClient = new HttpClient();
         }
 
-        public ScrapingHelpers(LoggingDataLayer _logging_repo)
+        public ScrapingHelpers(LoggingHelper logging_helper)
         {
-            logging_repo = _logging_repo;
-            browser = null;
-            webClient = new HttpClient();
+            _logging_helper = logging_helper;
+            _browser = null;
+            _webClient = new HttpClient();
         }
 
         public WebPage GetPage(string url)
         {
             try
             {
-                return browser.NavigateToPage(new Uri(url));
+                return _browser.NavigateToPage(new Uri(url));
             }
             catch (Exception e)
             {
-                logging_repo.LogError("Error in obtaining page from " + url + ": " + e.Message);
+                _logging_helper.LogError("Error in obtaining page from " + url + ": " + e.Message);
                 return null;
             }
         }
@@ -52,12 +52,12 @@ namespace DataDownloader
         {
             try
             {
-                string result = await webClient.GetStringAsync(url);
+                string result = await _webClient.GetStringAsync(url);
                 return result;
             }
             catch (Exception e)
             {
-                logging_repo.LogError("Problem in using webClient.GetStringAsync at "
+                _logging_helper.LogError("Problem in using webClient.GetStringAsync at "
                                        + url + ": " + e.Message);
                 return null;
             }
@@ -124,7 +124,7 @@ namespace DataDownloader
             }
             catch (Exception e)
             {
-                logging_repo.LogError("Error in obtaining pmid from PMC page" + pmc_id + ": " + e.Message);
+                _logging_helper.LogError("Error in obtaining pmid from PMC page" + pmc_id + ": " + e.Message);
                 return null;
             }
         }

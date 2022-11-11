@@ -5,13 +5,13 @@ namespace DataDownloader
 {
     public class DateHelpers
     {
-        LoggingDataLayer logging_repo;
+        LoggingHelper _logging_helper;
         StringHelpers sh;
 
-        public DateHelpers(LoggingDataLayer _logging_repo)
+        public DateHelpers(LoggingHelper logging_helper)
         {
-            logging_repo = _logging_repo;
-            sh = new StringHelpers(_logging_repo);
+            _logging_helper = logging_helper;
+            sh = new StringHelpers(_logging_helper);
         }
 
         public int GetMonthAsInt(string month_name)

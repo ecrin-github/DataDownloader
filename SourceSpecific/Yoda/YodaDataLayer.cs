@@ -89,34 +89,25 @@ namespace DataDownloader.yoda
         }
 
 
-        public SponsorDetails FetchSponsorDetailsFromTable(string sd_sid)
+        public NotRegisteredDetails FetchNonRegisteredDetailsFromTable(string pp_id)
         {
             using (var conn = new NpgsqlConnection(_yoda_pp_connString))
             {
-                string sql_string = "Select sponsor_org_id as org_id, sponsor_org as org_name, sponsor_protocol_id as prot_id from pp.not_registered ";
-                sql_string += "where sd_sid = '" + sd_sid + "'";
-                return conn.QueryFirstOrDefault<SponsorDetails>(sql_string);
+                string sql_string = @"Select sponsor_id, sponsor_name, short_sponsor_name, short_protocol_id,
+                                      title, brief_description, study_type_id 
+                                      from pp.not_registered 
+                                      where sd_sid = '" + pp_id + "'";
+                return conn.QueryFirstOrDefault<NotRegisteredDetails>(sql_string);
             }
         }
 
 
-        public StudyDetails FetchStudyDetailsFromTable(string sd_sid)
+        public void AddNewNotRegisteredRecord(string pp_id, string title, string short_sponsor_name, string protid)
         {
             using (var conn = new NpgsqlConnection(_yoda_pp_connString))
             {
-                string sql_string = "Select sd_sid, brief_description, study_type_id from pp.not_registered ";
-                sql_string += "where sd_sid = '" + sd_sid + "'";
-                return conn.QueryFirstOrDefault<StudyDetails>(sql_string);
-            }
-        }
-
-
-        public void AddNewRecord(string sd_sid, string title, string protid)
-        {
-            using (var conn = new NpgsqlConnection(_yoda_pp_connString))
-            {
-                string sql_string = "INSERT INTO pp.not_registered (sd_sid, title, sponsor_protocol_id)";
-                sql_string += "VALUES ('" + sd_sid + "', '" + title + "', '" + protid + "');";
+                string sql_string = "INSERT INTO pp.not_registered (sd_sid, title, short_sponsor_name, short_protocol_id)";
+                sql_string += "VALUES ('" + pp_id + "', '" + title + "', '" + short_sponsor_name + "', '" + protid + "');";
                 conn.Execute(sql_string);
             }
         }

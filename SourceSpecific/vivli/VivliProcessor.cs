@@ -73,7 +73,7 @@ namespace DataDownloader.vivli
             return page_study_list;
         }
 
-        public void GetAndStoreStudyDetails(VivliURL s, VivliDataLayer repo, LoggingDataLayer logging_repo)
+        public void GetAndStoreStudyDetails(VivliURL s, VivliDataLayer repo, LoggingHelper logging_helper)
         {
             VivliCopyHelpers vch = new VivliCopyHelpers();
 
@@ -97,11 +97,11 @@ namespace DataDownloader.vivli
                     HttpWebResponse errorResponse = we.Response as HttpWebResponse;
                     if (errorResponse.StatusCode == HttpStatusCode.NotFound)
                     {
-                        logging_repo.LogError("Record " + seqnum.ToString() + "  threw a 404 error");
+                        logging_helper.LogError("Record " + seqnum.ToString() + "  threw a 404 error");
                     }
                     else
                     {
-                        logging_repo.LogError("Record " + seqnum.ToString() + "  threw error " + errorResponse.StatusCode.ToString());
+                        logging_helper.LogError("Record " + seqnum.ToString() + "  threw error " + errorResponse.StatusCode.ToString());
                     }
                     return;
                 }

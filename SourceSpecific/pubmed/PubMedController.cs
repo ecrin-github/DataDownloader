@@ -49,49 +49,52 @@ namespace DataDownloader.pubmed
 
     public class PubMed_Controller
     {
-        LoggingDataLayer logging_repo;
-        PubMedDataLayer pubmed_repo;
-        Source source;
-        FileWriter file_writer;
-        int saf_id;
-        Args args;
-        XmlWriterSettings settings;
-        ScrapingHelpers ch;
-        string api_key;
-        string web_env = "";
-        int query_key = 0;
+        PubMedDataLayer _pubmed_repo;
+        Source _source;
+        FileWriter _file_writer;
+        int _saf_id;
+        Args _args;
+        XmlWriterSettings _settings;
+        ScrapingHelpers _ch;
+        string _api_key;
+        string _web_env = "";
+        int _query_key = 0;
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
 
-        public PubMed_Controller(int _saf_id, Source _source, Args _args, LoggingDataLayer _logging_repo)
+        public PubMed_Controller(int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            saf_id = _saf_id;
-            args = _args;
-            logging_repo = _logging_repo;
-            source = _source;
-            file_writer = new FileWriter(source);
+            _saf_id = saf_id;
+            _args = args;
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
+            _source = source;
+            _file_writer = new FileWriter(source);
 
             // API key belongs to NCBI user stevecanhamn (steve.canham@ecrin.org,
             // stored in appsettings.json and accessed via the logging repo.
-            api_key = "&api_key=" + logging_repo.PubmedAPIKey;
+
+            _api_key = "&api_key=" + monitor_repo.PubmedAPIKey;
         }
 
 
         public async Task<DownloadResult> ProcessDataAsync()
         {
             DownloadResult res = null;
-            pubmed_repo = new PubMedDataLayer(logging_repo);
-            settings = new XmlWriterSettings();
-            settings.Async = true;
-            settings.Encoding = System.Text.Encoding.UTF8;
-            ch = new ScrapingHelpers(logging_repo);
+            _pubmed_repo = new PubMedDataLayer();
+            _settings = new XmlWriterSettings();
+            _settings.Async = true;
+            _settings.Encoding = System.Text.Encoding.UTF8;
+            _ch = new ScrapingHelpers(_logging_helper);
 
-            if (args.filter_id == 10003)
+            if (_args.filter_id == 10003)
             {
                 // download articles with references to trial registries, that
                 // have been revised since the cutoff date
                 res = await ProcessPMIDsListfromBanksAsync();
             }
 
-            if (args.filter_id == 10004)
+            if (_args.filter_id == 10004)
             {
                 // download pmids listed as references in other sources,
                 // that have been revised since the cutoff date 
@@ -110,16 +113,16 @@ namespace DataDownloader.pubmed
 
             // This search can be (and usually is) date sensitive.
 
-            if (args.type_id == 114)
+            if (_args.type_id == 114)
             {
                 string today = DateTime.Now.ToString("yyyy/MM/dd");
-                string cutoff = ((DateTime)args.cutoff_date).ToString("yyyy/MM/dd");
+                string cutoff = ((DateTime)_args.cutoff_date).ToString("yyyy/MM/dd");
                 date_term = "&mindate=" + cutoff + "&maxdate=" + today + "&datetype=mdat";
             }
 
             // Get list of potential linked data banks (includes trial registries).
 
-            IEnumerable<PMSource> banks = pubmed_repo.FetchDatabanks();
+            IEnumerable<PMSource> banks = _pubmed_repo.FetchDatabanks();
             foreach (PMSource s in banks)
             {
                 // get databank details
@@ -127,13 +130,13 @@ namespace DataDownloader.pubmed
                 bank_id = s.id;
                 string search_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed";
                 search_term = "&term=" + s.nlm_abbrev + "[SI]" + date_term;
-                string search_url = search_baseURL + api_key + search_term + "&usehistory=y";
+                string search_url = search_baseURL + _api_key + search_term + "&usehistory=y";
 
                 // Get the number of total records that have this databank reference
                 // and that (usually) have been revised recently 
                 // and calculate the loop parameters.
 
-                string responseBody = await ch.GetStringFromURLAsync(search_url);
+                string responseBody = await _ch.GetStringFromURLAsync(search_url);
                 if (responseBody != null)
                 {
                     using (TextReader reader = new StringReader(responseBody))
@@ -144,8 +147,8 @@ namespace DataDownloader.pubmed
                         if (result != null)
                         {
                             totalRecords = result.Count;
-                            query_key = result.QueryKey;
-                            web_env = result.WebEnv;
+                            _query_key = result.QueryKey;
+                            _web_env = result.WebEnv;
                         }
                     }
 
@@ -156,7 +159,7 @@ namespace DataDownloader.pubmed
                     {
                         int retmax = 100;
                         string fetch_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed";
-                        fetch_baseURL += api_key + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
+                        fetch_baseURL += _api_key + "&WebEnv=" + _web_env + "&query_key=" + _query_key.ToString();
                         numCallsNeeded = (int)(totalRecords / retmax) + 1;
                         for (int i = 0; i < numCallsNeeded; i++)
                         {
@@ -172,13 +175,13 @@ namespace DataDownloader.pubmed
 
                             catch (HttpRequestException e)
                             {
-                                logging_repo.LogError("In PubMed ProcessPMIDsListfromBanksAsync(): " + e.Message);
+                                _logging_helper.LogError("In PubMed ProcessPMIDsListfromBanksAsync(): " + e.Message);
                                 return null;
                             }
                         }
                     }
 
-                    logging_repo.LogLine("Processed " + totalRecords.ToString() + " from " + s.nlm_abbrev);
+                    _logging_helper.LogLine("Processed " + totalRecords.ToString() + " from " + s.nlm_abbrev);
                 }
             }
 
@@ -198,17 +201,17 @@ namespace DataDownloader.pubmed
                 // Set up bases of search strings
 
                 string post_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/epost.fcgi?db=pubmed";
-                post_baseURL += api_key;
+                post_baseURL += _api_key;
                 string search_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed";
-                search_baseURL += api_key;
-                if (args.type_id == 114)
+                search_baseURL += _api_key;
+                if (_args.type_id == 114)
                 {
                     string today = DateTime.Now.ToString("yyyy/MM/dd");
-                    string cutoff = ((DateTime)args.cutoff_date).ToString("yyyy/MM/dd");
+                    string cutoff = ((DateTime)_args.cutoff_date).ToString("yyyy/MM/dd");
                     date_string = "&mindate=" + cutoff + "&maxdate=" + today + "&datetype=mdat";
                 }
                 string fetch_baseURL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed";
-                fetch_baseURL += api_key;
+                fetch_baseURL += _api_key;
                 string post_URL, search_URL, fetch_URL;
 
                 // Make a list of all PMIDs in the relevant DBs, 
@@ -218,14 +221,14 @@ namespace DataDownloader.pubmed
 
                 CreatePMIDsListfromSources();
 
-                IEnumerable<string> idstrings = pubmed_repo.FetchSourcePMIDStrings();
+                IEnumerable<string> idstrings = _pubmed_repo.FetchSourcePMIDStrings();
                 foreach (string idstring in idstrings)
                 {
                     // Construct the post URL using the 100 Ids
                     string_num++;
                     post_URL = post_baseURL + "&id=" + idstring;
                     System.Threading.Thread.Sleep(200);
-                    string post_responseBody = await ch.GetStringFromURLAsync(post_URL);
+                    string post_responseBody = await _ch.GetStringFromURLAsync(post_URL);
                     if (post_responseBody != null)
                     {
                         using (TextReader post_reader = new StringReader(post_responseBody))
@@ -237,12 +240,12 @@ namespace DataDownloader.pubmed
                             {
                                 // search the articles in these ids for recent revisions
 
-                                query_key = post_result.QueryKey;
-                                web_env = post_result.WebEnv;
+                                _query_key = post_result.QueryKey;
+                                _web_env = post_result.WebEnv;
                                 if (date_string == "")
                                 {
                                     // No need to search - fetch all 100 pubmed records immediately
-                                    fetch_URL = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
+                                    fetch_URL = fetch_baseURL + "&WebEnv=" + _web_env + "&query_key=" + _query_key.ToString();
                                     fetch_URL += "&retmax=100&retmode=xml";
                                     System.Threading.Thread.Sleep(200);
                                     await FetchPubMedRecordsAsync(fetch_URL, res);
@@ -251,11 +254,11 @@ namespace DataDownloader.pubmed
                                 {
                                     // search for those that have been revised on or since the cutoff date
 
-                                    search_URL = search_baseURL + "&term=%23" + query_key.ToString() + "+AND+" + date_string;
-                                    search_URL += "&WebEnv=" + web_env + "&usehistory=y";
+                                    search_URL = search_baseURL + "&term=%23" + _query_key.ToString() + "+AND+" + date_string;
+                                    search_URL += "&WebEnv=" + _web_env + "&usehistory=y";
 
                                     System.Threading.Thread.Sleep(200);
-                                    string search_responseBody = await ch.GetStringFromURLAsync(search_URL);
+                                    string search_responseBody = await _ch.GetStringFromURLAsync(search_URL);
                                     if (search_responseBody != null)
                                     {
                                         int totalRecords = 0;
@@ -266,12 +269,12 @@ namespace DataDownloader.pubmed
                                             if (search_result != null)
                                             {
                                                 totalRecords = search_result.Count;
-                                                query_key = search_result.QueryKey;
-                                                web_env = search_result.WebEnv;
+                                                _query_key = search_result.QueryKey;
+                                                _web_env = search_result.WebEnv;
 
                                                 if (totalRecords > 0)
                                                 {
-                                                    fetch_URL = fetch_baseURL + "&WebEnv=" + web_env + "&query_key=" + query_key.ToString();
+                                                    fetch_URL = fetch_baseURL + "&WebEnv=" + _web_env + "&query_key=" + _query_key.ToString();
                                                     fetch_URL += "&retmax=100&retmode=xml";
                                                     System.Threading.Thread.Sleep(200);
                                                     await FetchPubMedRecordsAsync(fetch_URL, res);
@@ -284,7 +287,7 @@ namespace DataDownloader.pubmed
                         }
                     }
 
-                    if (string_num % 10 == 0) logging_repo.LogLine(string_num.ToString() + " lines checked");
+                    if (string_num % 10 == 0) _logging_helper.LogLine(string_num.ToString() + " lines checked");
                 }
 
                 return res;
@@ -292,7 +295,7 @@ namespace DataDownloader.pubmed
 
             catch (HttpRequestException e)
             {
-                logging_repo.LogError("In PubMed ProcessPMIDsListfromDBSourcesAsync(): " + e.Message);
+                _logging_helper.LogError("In PubMed ProcessPMIDsListfromDBSourcesAsync(): " + e.Message);
                 return null;
             }
 
@@ -303,7 +306,7 @@ namespace DataDownloader.pubmed
         {
             // Establish tables and support objects.
 
-            pubmed_repo.SetUpTempPMIDsBySourceTables();
+            _pubmed_repo.SetUpTempPMIDsBySourceTables();
             CopyHelpers helper = new CopyHelpers();
             IEnumerable<PMIDBySource> references;
 
@@ -312,19 +315,19 @@ namespace DataDownloader.pubmed
             // this is not cutoff date sensitive as last revised date
             // not known at this time - has to be checked later.
 
-            IEnumerable<Source> sources = pubmed_repo.FetchSourcesWithReferences();
+            IEnumerable<Source> sources = _pubmed_repo.FetchSourcesWithReferences();
             foreach (Source s in sources)
             {
-                references = pubmed_repo.FetchSourceReferences(s.database_name);
-                pubmed_repo.StorePmidsBySource(helper.source_ids_helper, references);
+                references = _pubmed_repo.FetchSourceReferences(s.database_name);
+                _pubmed_repo.StorePmidsBySource(helper.source_ids_helper, references);
             }
-            pubmed_repo.CreatePMID_IDStrings();
+            _pubmed_repo.CreatePMID_IDStrings();
         }
 
 
         public async Task FetchPubMedRecordsAsync(string fetch_URL, DownloadResult res)
         {
-            string responseBody = await ch.GetStringFromURLAsync(fetch_URL);
+            string responseBody = await _ch.GetStringFromURLAsync(fetch_URL);
             if (responseBody != null)
             {
                 XmlDocument xdoc = new XmlDocument();
@@ -349,29 +352,29 @@ namespace DataDownloader.pubmed
                 // file and update file_record (by ref).
                 res.num_checked++;
                 DateTime? last_revised_datetime = GetDateLastRevised(article);
-                ObjectFileRecord file_record = logging_repo.FetchObjectFileRecord(pmid, source.id);
+                ObjectFileRecord file_record = _monitor_repo.FetchObjectFileRecord(pmid, _source.id);
                 if (file_record == null)
                 {
                     string remote_url = "https://www.ncbi.nlm.nih.gov/pubmed/" + pmid;
-                    file_record = new ObjectFileRecord(source.id, pmid, remote_url, saf_id);
+                    file_record = new ObjectFileRecord(_source.id, pmid, remote_url, _saf_id);
                     file_record.last_revised = last_revised_datetime;
                     WriteNewFile(article, ipmid, file_record);
 
-                    logging_repo.InsertObjectFileRec(file_record);
+                    _monitor_repo.InsertObjectFileRec(file_record);
                     res.num_added++;
                     res.num_downloaded++;
                 }
                 else
                 {
-                    file_record.last_saf_id = saf_id;
+                    file_record.last_saf_id = _saf_id;
                     file_record.last_revised = last_revised_datetime;
                     ReplaceFile(article, file_record);
 
-                    logging_repo.StoreObjectFileRec(file_record);
+                    _monitor_repo.StoreObjectFileRec(file_record);
                     res.num_downloaded++;
                 }
 
-                if (res.num_checked % 100 == 0) logging_repo.LogLine("Checked so far: " + res.num_checked.ToString());
+                if (res.num_checked % 100 == 0) _logging_helper.LogLine("Checked so far: " + res.num_checked.ToString());
             }
 
         }
@@ -400,7 +403,7 @@ namespace DataDownloader.pubmed
 
         private void WriteNewFile(XmlNode article, int ipmid, ObjectFileRecord file_record)
         {
-            string folder_name = Path.Combine(source.local_folder, "PM" + (ipmid / 100000).ToString("0000") + "xxxxx");
+            string folder_name = Path.Combine(_source.local_folder, "PM" + (ipmid / 100000).ToString("0000") + "xxxxx");
             if (!Directory.Exists(folder_name))
             {
                 Directory.CreateDirectory(folder_name);
@@ -408,7 +411,7 @@ namespace DataDownloader.pubmed
             string filename = "PM" + ipmid.ToString("000000000") + ".xml";
             string full_path = Path.Combine(folder_name, filename);
 
-            using (XmlWriter writer = XmlWriter.Create(full_path, settings))
+            using (XmlWriter writer = XmlWriter.Create(full_path, _settings))
             {
                 article.WriteTo(writer);
             }
@@ -427,7 +430,7 @@ namespace DataDownloader.pubmed
             {
                 File.Delete(full_path);
             }
-            using (XmlWriter writer = XmlWriter.Create(full_path, settings))
+            using (XmlWriter writer = XmlWriter.Create(full_path, _settings))
             {
                 article.WriteTo(writer);
             }

@@ -12,30 +12,32 @@ namespace DataDownloader.biolincc
 {
     public class BioLINCC_Controller
     {
-        ScrapingBrowser browser;
-        BioLinccDataLayer biolincc_repo;
-        BioLINCC_Processor processor;
-        Source source;
-        string file_base;
-        FileWriter file_writer;
-        int saf_id;
-        int source_id;
-        LoggingDataLayer logging_repo;
-        int? days_ago;
+        ScrapingBrowser _browser;
+        BioLinccDataLayer _biolincc_repo;
+        BioLINCC_Processor _processor;
+        Source _source;
+        string _file_base;
+        FileWriter _file_writer;
+        int _saf_id;
+        int _source_id;
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
+        int? _days_ago;
 
 
-        public BioLINCC_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+        public BioLINCC_Controller(ScrapingBrowser browser, int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            browser = _browser;
-            biolincc_repo = new BioLinccDataLayer();
-            processor = new BioLINCC_Processor();
-            source = _source;
-            file_base = source.local_folder;
-            source_id = source.id;
-            saf_id = _saf_id;
-            file_writer = new FileWriter(source);
-            logging_repo = _logging_repo;
-            days_ago = args.skip_recent_days;
+            _browser = browser;
+            _biolincc_repo = new BioLinccDataLayer();
+            _processor = new BioLINCC_Processor();
+            _source = source;
+            _file_base = source.local_folder;
+            _source_id = source.id;
+            _saf_id = saf_id;
+            _file_writer = new FileWriter(source);
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
+            _days_ago = args.skip_recent_days;
         }
 
         
@@ -47,18 +49,18 @@ namespace DataDownloader.biolincc
             // update or focused download, as opposed to a full download.
             
             // Get list of studies from the Biolincc start page.
-            ScrapingHelpers ch = new ScrapingHelpers(browser, logging_repo);
+            ScrapingHelpers ch = new ScrapingHelpers(_browser, _logging_helper);
             WebPage homePage = ch.GetPage("https://biolincc.nhlbi.nih.gov/studies/");
             if (homePage == null)
             {
-                logging_repo.LogError("Initial attempt to access BioLInnc studies list page failed");
+                _logging_helper.LogError("Initial attempt to access BioLInnc studies list page failed");
                 return null;
             }
 
             var study_list_table = homePage.Find("div", By.Class("table-responsive"));
             HtmlNode[] studyRows = study_list_table.CssSelect("tbody tr").ToArray();
-            logging_repo.LogHeader("Processing Data");
-            logging_repo.LogLine("file list obtained, of " + studyRows.Length + "rows");
+            _logging_helper.LogHeader("Processing Data");
+            _logging_helper.LogLine("file list obtained, of " + studyRows.Length + "rows");
 
             XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
             DownloadResult res = new DownloadResult();
@@ -72,25 +74,25 @@ namespace DataDownloader.biolincc
                 //if (res.num_checked == 3) continue;
                 //if (res.num_checked > 5) break;
 
-                BioLincc_Basics bb = processor.GetStudyBasics(row);
+                BioLincc_Basics bb = _processor.GetStudyBasics(row);
                 if (bb.collection_type == "Non-BioLINCC Resource")
                 {
-                    logging_repo.LogLine("#" + res.num_checked.ToString() + ": Non-BioLINCC Resource, not processed ");
+                    _logging_helper.LogLine("#" + res.num_checked.ToString() + ": Non-BioLINCC Resource, not processed ");
                 }
                 else
                 {
                     // if record already downloaded today, ignore it... (may happen if re-running after an error)
                     // interrogate study record (if there is one)
-                    if (days_ago == null || !logging_repo.Downloaded_recently(source_id, bb.sd_sid, (int)days_ago))
+                    if (_days_ago == null || !_monitor_repo.Downloaded_recently(_source_id, bb.sd_sid, (int)_days_ago))
                     {
                         // fetch the constructed study record
-                        logging_repo.LogLine("#" + res.num_checked.ToString() + ": " + bb.sd_sid);
-                        BioLincc_Record st = processor.GetStudyDetails(bb, ch, biolincc_repo, logging_repo);
+                        _logging_helper.LogLine("#" + res.num_checked.ToString() + ": " + bb.sd_sid);
+                        BioLincc_Record st = _processor.GetStudyDetails(bb, ch, _biolincc_repo, _logging_helper);
 
                         if (st != null)
                         {
                             // Store the links between Biolincc and NCT records
-                            biolincc_repo.StoreLinks(st.sd_sid, st.registry_ids);
+                            _biolincc_repo.StoreLinks(st.sd_sid, st.registry_ids);
 
                             // store any nonmatched documents in the table
                             // and abort the download for that record
@@ -99,17 +101,17 @@ namespace DataDownloader.biolincc
                             { 
                                 foreach (string s in st.UnmatchedDocTypes)
                                 {
-                                    biolincc_repo.InsertUnmatchedDocumentType(s);
+                                    _biolincc_repo.InsertUnmatchedDocumentType(s);
                                 }
                             }
                             else
                             {
                                 // Write out study record as XML.
 
-                                string file_name = source.local_file_prefix + st.sd_sid + ".xml";
-                                string full_path = Path.Combine(file_base, file_name);
-                                file_writer.WriteBioLINCCFile(writer, st, full_path);
-                                bool added = logging_repo.UpdateStudyDownloadLog(source_id, st.sd_sid, st.remote_url, saf_id,
+                                string file_name = _source.local_file_prefix + st.sd_sid + ".xml";
+                                string full_path = Path.Combine(_file_base, file_name);
+                                _file_writer.WriteBioLINCCFile(writer, st, full_path);
+                                bool added = _monitor_repo.UpdateStudyDownloadLog(_source_id, st.sd_sid, st.remote_url, _saf_id,
                                                                   st.last_revised_date, full_path);
                                 res.num_downloaded++;
                                 if (added) res.num_added++;
@@ -121,11 +123,11 @@ namespace DataDownloader.biolincc
                         }
                     }
 
-                    logging_repo.LogLine("files now downloaded: " + res.num_downloaded.ToString());
+                    _logging_helper.LogLine("files now downloaded: " + res.num_downloaded.ToString());
                 }
             }
 
-            biolincc_repo.UpdateLinkStatus();
+            _biolincc_repo.UpdateLinkStatus();
             return res;
         }
 
@@ -135,7 +137,7 @@ namespace DataDownloader.biolincc
             // Preliminary processing of data
             // Allows groups of Biolinnc trials that equate to a single NCT registry to be identified
             XmlSerializer writer = new XmlSerializer(typeof(BioLincc_Record));
-            IEnumerable<StudyFileRecord> file_list = logging_repo.FetchStudyFileRecords(source.id);
+            IEnumerable<StudyFileRecord> file_list = _monitor_repo.FetchStudyFileRecords(_source.id);
             int n = 0; string filePath = "";
             foreach (StudyFileRecord rec in file_list)
             {
@@ -157,16 +159,16 @@ namespace DataDownloader.biolincc
                     BioLincc_Record studyRegEntry = (BioLincc_Record)serializer.Deserialize(rdr);
 
                     // update the linkage data 
-                    studyRegEntry.in_multiple_biolincc_group = biolincc_repo.GetMultiLinkStatus(rec.sd_id);
+                    studyRegEntry.in_multiple_biolincc_group = _biolincc_repo.GetMultiLinkStatus(rec.sd_id);
 
                     // and reserialise
-                    string file_name = source.local_file_prefix + rec.sd_id + ".xml";
-                    string full_path = Path.Combine(file_base, file_name);
-                    file_writer.WriteBioLINCCFile(writer, studyRegEntry, full_path);
+                    string file_name = _source.local_file_prefix + rec.sd_id + ".xml";
+                    string full_path = Path.Combine(_file_base, file_name);
+                    _file_writer.WriteBioLINCCFile(writer, studyRegEntry, full_path);
 
                 }
 
-                if (n % 10 == 0) logging_repo.LogLine("Updated " + n.ToString());
+                if (n % 10 == 0) _logging_helper.LogLine("Updated " + n.ToString());
             }
         }
     }

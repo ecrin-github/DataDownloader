@@ -18,8 +18,7 @@ namespace DataDownloader.pubmed
         private string mon_connString;
         private string context_connString;
         private string folder_base;
-        private LoggingDataLayer logging_repo;
-
+       
         /// <summary>
         /// Parameterless constructor is used to automatically build
         /// the connection string, using an appsettings.json file that 
@@ -28,7 +27,7 @@ namespace DataDownloader.pubmed
         /// stored in the class's folder_base property.
         /// </summary>
         /// 
-        public PubMedDataLayer(LoggingDataLayer _logging_repo)
+        public PubMedDataLayer()
         {
             IConfigurationRoot settings = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
@@ -50,8 +49,6 @@ namespace DataDownloader.pubmed
             context_connString = builder.ConnectionString;
 
             folder_base = settings["folder_base"];
-
-            logging_repo = _logging_repo;
         }
 
         // Tables and functions used for the PMIDs collected from DB Sources

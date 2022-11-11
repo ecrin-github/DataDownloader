@@ -23,24 +23,25 @@ namespace DataDownloader
         {
             // Handle options.
             Args args = new Args();
-            LoggingDataLayer logging_repo = new LoggingDataLayer();
+            LoggingHelper _logging_helper = new LoggingHelper();
+            MonitorDataLayer _monitor_repo = new MonitorDataLayer(_logging_helper);
 
             // Check source id is valid. If it is, the source property of the 
-            // Logging_repo is also set as part of the function.
+            // monitor_repo is also set as part of the function.
             try
             {
-                Source source = logging_repo.FetchSourceParameters(opts.source_id);
+                Source source = _monitor_repo.FetchSourceParameters(opts.source_id);
                 if (source == null)
                 {
                     // N.B. No log file available yet - needs to be created in exception handler
                     throw new ArgumentException("The first argument does not correspond to a known source");
                 }
                 args.source_id = source.id;
-                logging_repo.OpenLogFile(opts.file_name);
+                _logging_helper.OpenLogFile(source, opts.file_name);
 
                 // Check source fetch type id is valid. 
 
-                SFType sf_type = logging_repo.FetchTypeParameters(opts.search_fetch_type_id);
+                SFType sf_type = _monitor_repo.FetchTypeParameters(opts.search_fetch_type_id);
                 if (sf_type == null)
                 {
                     throw new ArgumentException("the type argument does not correspond to a known search / fetch type");
@@ -84,11 +85,11 @@ namespace DataDownloader
                         // Try and find the last download date and use that
                         if (sf_type.requires_search_id)
                         {
-                            args.cutoff_date = logging_repo.ObtainLastDownloadDateWithFilter(source.id, (int)args.filter_id);
+                            args.cutoff_date = _monitor_repo.ObtainLastDownloadDateWithFilter(source.id, (int)args.filter_id);
                         }
                         else
                         {
-                            args.cutoff_date = logging_repo.ObtainLastDownloadDate(source.id);
+                            args.cutoff_date = _monitor_repo.ObtainLastDownloadDate(source.id);
                         }
                     }
 
@@ -137,34 +138,55 @@ namespace DataDownloader
 
                 // Create the main functional class and set it to work.
 
-                Downloader dl = new Downloader(logging_repo);
+                Downloader dl = new Downloader(_monitor_repo, _logging_helper);
                 await dl.RunDownloaderAsync(args, source);
                 return 0;
             }
 
             catch (ArgumentException a)
             {
-                if (logging_repo.LogFilePath == null)
+                if (_logging_helper.LogFilePath == null)
                 {
                     // create a log file without the source parameter
-                    logging_repo.OpenNoSourceLogFile();
+                    _logging_helper.OpenNoSourceLogFile();
 
                 }
-                logging_repo.LogError("Parameter exception: " + a.Message);
-                logging_repo.CloseLog();
+                string error_header = "Parameter exception ERROR found:\n";
+                string error_message = "Parameter exception: " + a.Message;
+                string target_site = "Target Site: " + a.TargetSite.Name;
+                string stack_trace = "Stack Trace:\n" + a.StackTrace;
+                EndOnError(_logging_helper, error_header, error_message, target_site, stack_trace);
                 return -1;
             }
 
             catch (Exception e)
             {
-                logging_repo.LogError("Unhandled exception: " + e.Message);
-                logging_repo.LogLine(e.StackTrace);
-                logging_repo.LogLine(e.TargetSite.Name);
-                logging_repo.CloseLog();
+                string error_header = "Unhandled exception ERROR found:\n";
+                string error_message = "Parameter exception: " + e.Message;
+                string target_site = "Target Site: " + e.TargetSite.Name;
+                string stack_trace = "Stack Trace:\n" + e.StackTrace;
+                EndOnError(_logging_helper, error_header, error_message, target_site, stack_trace);
                 return -1;
             }
+
+             
+                      
         }
 
+        private static void EndOnError(LoggingHelper logging_helper, string error_header, string error_message,
+                                        string target_site, string stack_trace)
+        {
+            logging_helper.LogLine(error_message);
+            logging_helper.LogLine(target_site);
+            logging_helper.LogLine(stack_trace);
+            logging_helper.CloseLog();
+
+            string error_message_text = error_header + error_message + "\n" + target_site + "\n" + stack_trace;
+            logging_helper.SendEmail(error_message_text);
+        }
+
+
+       
 
         static Task HandleParseErrorAsync(IEnumerable<Error> errs)
         {

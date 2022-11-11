@@ -6,28 +6,30 @@ namespace DataDownloader.vivli
 {
     public class Vivli_Controller
     {
-        ScrapingBrowser browser;
-        VivliDataLayer vivli_repo;
-        Vivli_Processor processor;
-        Source source;
-        string file_base;
-        FileWriter file_writer;
-        int saf_id;
-        int source_id;
-        LoggingDataLayer logging_repo;
+        ScrapingBrowser _browser;
+        VivliDataLayer _vivli_repo;
+        Vivli_Processor _processor;
+        Source _source;
+        string _file_base;
+        FileWriter _file_writer;
+        int _saf_id;
+        int _source_id;
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
 
 
-        public Vivli_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args args, LoggingDataLayer _logging_repo)
+        public Vivli_Controller(ScrapingBrowser browser, int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            browser = _browser;
-            vivli_repo = new VivliDataLayer();
-            processor = new Vivli_Processor();
-            source = _source;
-            file_base = source.local_folder;
-            source_id = source.id;
-            saf_id = _saf_id;
-            file_writer = new FileWriter(source);
-            logging_repo = _logging_repo;
+            _browser = browser;
+            _vivli_repo = new VivliDataLayer();
+            _processor = new Vivli_Processor();
+            _source = source;
+            _file_base = source.local_folder;
+            _source_id = source.id;
+            _saf_id = saf_id;
+            _file_writer = new FileWriter(source);
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
         }
 
 
@@ -39,27 +41,27 @@ namespace DataDownloader.vivli
             // store it in pp table
 
             List<VivliURL> all_study_list = new List<VivliURL>();
-            vivli_repo.SetUpParameterTable();
+            _vivli_repo.SetUpParameterTable();
 
             string baseURL = "https://search.datacite.org/works?query=vivli&resource-type-id=dataset";
-            WebPage startPage = browser.NavigateToPage(new Uri(baseURL));
+            WebPage startPage = _browser.NavigateToPage(new Uri(baseURL));
 
             // Entries on DataCite search are 25 / page
-            int totalNumber = processor.GetStudyNumbers(startPage);
+            int totalNumber = _processor.GetStudyNumbers(startPage);
             int loopEndNumber = (totalNumber / 25) + 2;
 
             // for (int i = 1; i < 5; i++)  // testing only
             for (int i = 1; i < loopEndNumber; i++)
             {
                 string URL = baseURL + " &page=" + i.ToString();
-                WebPage web_page = browser.NavigateToPage(new Uri(URL));
+                WebPage web_page = _browser.NavigateToPage(new Uri(URL));
 
-                List<VivliURL> page_study_list = processor.GetStudyInitialDetails(web_page, i);
-                vivli_repo.StoreRecs(vch.api_url_copyhelper, page_study_list);
+                List<VivliURL> page_study_list = _processor.GetStudyInitialDetails(web_page, i);
+                _vivli_repo.StoreRecs(vch.api_url_copyhelper, page_study_list);
 
                 // Log to console and pause before the next page
 
-                logging_repo.LogLine(i.ToString());
+                _logging_helper.LogLine(i.ToString());
                 System.Threading.Thread.Sleep(1000);
             }
         }
@@ -71,20 +73,20 @@ namespace DataDownloader.vivli
             // and using these to call the api directly, receiving json
             // that can be extracted directly from the response
 
-            vivli_repo.SetUpStudiesTable();
-            vivli_repo.SetUpPackagesTable();
-            vivli_repo.SetUpDataObectsTable();
+            _vivli_repo.SetUpStudiesTable();
+            _vivli_repo.SetUpPackagesTable();
+            _vivli_repo.SetUpDataObectsTable();
 
-            IEnumerable<VivliURL> all_study_list = vivli_repo.FetchVivliApiUrLs();
+            IEnumerable<VivliURL> all_study_list = _vivli_repo.FetchVivliApiUrLs();
 
             foreach (VivliURL s in all_study_list)
             {
-                processor.GetAndStoreStudyDetails(s, vivli_repo, logging_repo);
+                _processor.GetAndStoreStudyDetails(s, _vivli_repo, _logging_helper);
 
                 // logging to go here
 
                 // write to console...
-                logging_repo.LogLine(s.id.ToString() + ": " + s.vivli_url);
+                _logging_helper.LogLine(s.id.ToString() + ": " + s.vivli_url);
 
                 // put a pause here if necessary
                 System.Threading.Thread.Sleep(800);

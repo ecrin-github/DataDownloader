@@ -34,14 +34,14 @@ namespace DataDownloader.biolincc
         }
 
 
-        public BioLincc_Record GetStudyDetails(BioLincc_Basics bb, ScrapingHelpers ch, BioLinccDataLayer repo, LoggingDataLayer logging_repo)
+        public BioLincc_Record GetStudyDetails(BioLincc_Basics bb, ScrapingHelpers ch, BioLinccDataLayer repo, LoggingHelper logging_helper)
         {
             // First check the study main page can be reached
-            DateHelpers dh = new DateHelpers(logging_repo);
+            DateHelpers dh = new DateHelpers(logging_helper);
             WebPage studyPage = ch.GetPage(bb.remote_url);
             if (studyPage == null)
             {
-                logging_repo.LogError("Attempt to access main BioLInnc study page for " + bb.acronym + " failed");
+                logging_helper.LogError("Attempt to access main BioLInnc study page for " + bb.acronym + " failed");
                 return null;
             }
 
@@ -426,176 +426,178 @@ namespace DataDownloader.biolincc
 
             // side bar
             HtmlNode[] sections = sideBar.CssSelect("div.detail-aside-row").ToArray();
-
             List<Link> Links = new List<Link>();
 
             for (int i = 0; i < sections.Count(); i++)
             {
                 HtmlNode headerLine = sections[i].CssSelect("h2").FirstOrDefault();
-                string headerText = headerLine.InnerText.Trim();
-                if (headerText != "Study Catalog")
+                if (headerLine != null)
                 {
-                    if (headerText == "Resources Available")
+                    string headerText = headerLine?.InnerText?.Trim();
+                    if (headerText != "Study Catalog")
                     {
-                        string att_value = sections[i].InnerText.Replace("Resources Available", "");
-                        // replace original value from table as this is slightly more descriptive
-                        st.resources_available = att_value.Replace("\n", "").Replace("\r", "").Trim();
-                    }
-
-                    if (headerText.Length > 18 && headerText.Substring(0, 18) == "Study Publications")
-                    {
-                        // just record the link to the index page for now
-                        // the number of publications will be collected later
-                        HtmlNode refNode = headerLine.CssSelect("a").FirstOrDefault();
-                        Links.Add(new Link("Study Publications", refNode.Attributes["href"].Value));
-                    }
-
-                    if (headerText == "Study Documents")
-                    {
-                        HtmlNode[] documents = sections[i].CssSelect("ul a").ToArray();
-                        string doc_name, doc_type, object_type, url, size, sizeUnits;
-                        int? object_type_id, doc_type_id, access_type_id;
-
-                        foreach (HtmlNode node in documents)
+                        if (headerText == "Resources Available")
                         {
-                            // re-initialise
-                            doc_name = ""; doc_type = ""; object_type = ""; url = ""; size = ""; sizeUnits = "";
-                            object_type_id = 0; doc_type_id = 0; access_type_id = 0;
+                            string att_value = sections[i].InnerText.Replace("Resources Available", "");
+                            // replace original value from table as this is slightly more descriptive
+                            st.resources_available = att_value.Replace("\n", "").Replace("\r", "").Trim();
+                        }
 
-                            // get the url for the document
-                            url = node.Attributes["href"].Value;
-                            // add site prefix and chop off time stamp parameter, if one has been added
-                            url = "https://biolincc.nhlbi.nih.gov" + url;
-                            if (url.IndexOf("?") > 0) url = url.Substring(0, url.IndexOf("?"));
+                        if (headerText.Length > 18 && headerText.Substring(0, 18) == "Study Publications")
+                        {
+                            // just record the link to the index page for now
+                            // the number of publications will be collected later
+                            HtmlNode refNode = headerLine.CssSelect("a").FirstOrDefault();
+                            Links.Add(new Link("Study Publications", refNode.Attributes["href"].Value));
+                        }
 
-                            string docString = node.InnerText.Trim();
+                        if (headerText == "Study Documents")
+                        {
+                            HtmlNode[] documents = sections[i].CssSelect("ul a").ToArray();
+                            string doc_name, doc_type, object_type, url, size, sizeUnits;
+                            int? object_type_id, doc_type_id, access_type_id;
 
-                            // split off the bracketed data on type and size
-                            string[] brackets = docString.Split(splitter);  // split on left bracket
-                            if (brackets.Count() == 1)
+                            foreach (HtmlNode node in documents)
                             {
-                                // no bracket (not sure if it occurs)
-                                doc_name = docString.Trim();
-                                object_type = "List of web links";
-                                object_type_id = 86;
-                                doc_type = "Web text";
-                                doc_type_id = 35;
-                                access_type_id = 12;
-                                sizeUnits = "";
-                                size = "";
-                            }
+                                // re-initialise
+                                doc_name = ""; doc_type = ""; object_type = ""; url = ""; size = ""; sizeUnits = "";
+                                object_type_id = 0; doc_type_id = 0; access_type_id = 0;
 
-                            if (brackets.Count() > 1)
-                            {
-                                doc_name = brackets[0].Trim();
-                                // in case there is bracketed text in the name - assumed not more than one such
-                                if (brackets.Count() == 3) doc_name = (brackets[0] + "(" + brackets[1]).Trim();
+                                // get the url for the document
+                                url = node.Attributes["href"].Value;
+                                // add site prefix and chop off time stamp parameter, if one has been added
+                                url = "https://biolincc.nhlbi.nih.gov" + url;
+                                if (url.IndexOf("?") > 0) url = url.Substring(0, url.IndexOf("?"));
 
-                                string docInfo = brackets[brackets.Count() - 1].Trim();  // get last bracketed text, normally will just be one
-                                docInfo = docInfo.Substring(0, docInfo.Length - 1);  // drop right bracket
+                                string docString = node.InnerText.Trim();
 
-                                string[] parameters = docInfo.Split('-');  // split on hyphen, assumed this is a constant feature
-                                if (parameters.Count() == 1)
+                                // split off the bracketed data on type and size
+                                string[] brackets = docString.Split(splitter);  // split on left bracket
+                                if (brackets.Count() == 1)
                                 {
-                                    // no hyphen
-                                    doc_type = docInfo.Trim();
+                                    // no bracket (not sure if it occurs)
+                                    doc_name = docString.Trim();
+                                    object_type = "List of web links";
+                                    object_type_id = 86;
+                                    doc_type = "Web text";
+                                    doc_type_id = 35;
+                                    access_type_id = 12;
                                     sizeUnits = "";
                                     size = "";
                                 }
 
-                                if (parameters.Count() > 1)
+                                if (brackets.Count() > 1)
                                 {
-                                    doc_type = parameters[0].Trim();
+                                    doc_name = brackets[0].Trim();
+                                    // in case there is bracketed text in the name - assumed not more than one such
+                                    if (brackets.Count() == 3) doc_name = (brackets[0] + "(" + brackets[1]).Trim();
 
-                                    string sizeString = parameters[1].Replace('\u00A0', '\u0020').Trim();  // replace any non breaking spaces with spaces
-                                    string[] sizePars = sizeString.Split(' '); // split on space
-                                    if (sizePars.Count() == 1)
+                                    string docInfo = brackets[brackets.Count() - 1].Trim();  // get last bracketed text, normally will just be one
+                                    docInfo = docInfo.Substring(0, docInfo.Length - 1);  // drop right bracket
+
+                                    string[] parameters = docInfo.Split('-');  // split on hyphen, assumed this is a constant feature
+                                    if (parameters.Count() == 1)
                                     {
-                                        // no space
-                                        sizeUnits = sizeString.Trim();
+                                        // no hyphen
+                                        doc_type = docInfo.Trim();
+                                        sizeUnits = "";
                                         size = "";
                                     }
-                                    if (sizePars.Count() > 1)
+
+                                    if (parameters.Count() > 1)
                                     {
-                                        size = sizePars[0].Trim();
-                                        sizeUnits = sizePars[1].Trim();
+                                        doc_type = parameters[0].Trim();
+
+                                        string sizeString = parameters[1].Replace('\u00A0', '\u0020').Trim();  // replace any non breaking spaces with spaces
+                                        string[] sizePars = sizeString.Split(' '); // split on space
+                                        if (sizePars.Count() == 1)
+                                        {
+                                            // no space
+                                            sizeUnits = sizeString.Trim();
+                                            size = "";
+                                        }
+                                        if (sizePars.Count() > 1)
+                                        {
+                                            size = sizePars[0].Trim();
+                                            sizeUnits = sizePars[1].Trim();
+                                        }
                                     }
                                 }
-                            }
 
-                            // identify resource type in MDR terms
+                                // identify resource type in MDR terms
 
-                            // first obtain object and doc types where straightforward 
-                            if (doc_type == "PDF")
-                            {
-                                doc_type_id = 11;
-                                access_type_id = 11;
-                            }
-                            if (doc_type == "HTM")
-                            {
-                                object_type = "List of web links";
-                                object_type_id = 86;
-                                doc_type = "Web text";
-                                doc_type_id = 35;
-                                access_type_id = 12;
-                            }
-
-                            if (object_type_id == 0)
-                            {
-                                // code the common ones
-                                switch (doc_name)
+                                // first obtain object and doc types where straightforward 
+                                if (doc_type == "PDF")
                                 {
-                                    case "Data Dictionary":
-                                        {
-                                            object_type = "Data Dictionary";
-                                            object_type_id = 31;
-                                            break;
-                                        }
-                                    case "Protocol":
-                                        {
-                                            object_type = "Study Protocol";
-                                            object_type_id = 11;
-                                            break;
-                                        }
-                                    case "Manual of Operations":
-                                        {
-                                            object_type = "Manual of Operations";
-                                            object_type_id = 35;
-                                            break;
-                                        }
-                                    case "Manual of Procedures":
-                                        {
-                                            object_type = "Manual of Procedures";
-                                            object_type_id = 36;
-                                            break;
-                                        }
-                                    case "Forms":
-                                        {
-                                            object_type = "Data collection forms";
-                                            object_type_id = 21;
-                                            break;
-                                        }
+                                    doc_type_id = 11;
+                                    access_type_id = 11;
+                                }
+                                if (doc_type == "HTM")
+                                {
+                                    object_type = "List of web links";
+                                    object_type_id = 86;
+                                    doc_type = "Web text";
+                                    doc_type_id = 35;
+                                    access_type_id = 12;
                                 }
 
-                                // for all those left call into the database table 
                                 if (object_type_id == 0)
                                 {
-                                    ObjectTypeDetails object_type_details = repo.FetchDocTypeDetails(doc_name);
-                                    if (object_type_details?.type_id != null)
+                                    // code the common ones
+                                    switch (doc_name)
                                     {
-                                        object_type_id = object_type_details.type_id;
-                                        object_type = object_type_details.type_name;
+                                        case "Data Dictionary":
+                                            {
+                                                object_type = "Data Dictionary";
+                                                object_type_id = 31;
+                                                break;
+                                            }
+                                        case "Protocol":
+                                            {
+                                                object_type = "Study Protocol";
+                                                object_type_id = 11;
+                                                break;
+                                            }
+                                        case "Manual of Operations":
+                                            {
+                                                object_type = "Manual of Operations";
+                                                object_type_id = 35;
+                                                break;
+                                            }
+                                        case "Manual of Procedures":
+                                            {
+                                                object_type = "Manual of Procedures";
+                                                object_type_id = 36;
+                                                break;
+                                            }
+                                        case "Forms":
+                                            {
+                                                object_type = "Data collection forms";
+                                                object_type_id = 21;
+                                                break;
+                                            }
                                     }
-                                    else
+
+                                    // for all those left call into the database table 
+                                    if (object_type_id == 0)
                                     {
-                                        logging_repo.LogLine("!!!! Need to map " + doc_name + " in pp.document_types table !!!!");
-                                        st.UnmatchedDocTypes.Add(doc_name);
+                                        ObjectTypeDetails object_type_details = repo.FetchDocTypeDetails(doc_name);
+                                        if (object_type_details?.type_id != null)
+                                        {
+                                            object_type_id = object_type_details.type_id;
+                                            object_type = object_type_details.type_name;
+                                        }
+                                        else
+                                        {
+                                            logging_helper.LogLine("!!!! Need to map " + doc_name + " in pp.document_types table !!!!");
+                                            st.UnmatchedDocTypes.Add(doc_name);
+                                        }
                                     }
                                 }
-                            }
 
-                            study_resources.Add(new Resource(doc_name, object_type_id, object_type, doc_type_id, doc_type,
-                                                                 access_type_id, url, size, sizeUnits));
+                                study_resources.Add(new Resource(doc_name, object_type_id, object_type, doc_type_id, doc_type,
+                                                                     access_type_id, url, size, sizeUnits));
+                            }
                         }
                     }
                 }
@@ -611,7 +613,7 @@ namespace DataDownloader.biolincc
                 WebPage pubsPage = ch.GetPage(pubURL);
                 if (pubsPage == null)
                 {
-                    logging_repo.LogError("Attempt to access study links page for " + bb.acronym + " failed");
+                    logging_helper.LogError("Attempt to access study links page for " + bb.acronym + " failed");
                 }
                 else
                 {
@@ -635,7 +637,7 @@ namespace DataDownloader.biolincc
                         WebPage pubsDetailsPage = ch.GetPage(Links[i].url);
                         if (pubsDetailsPage == null)
                         {
-                            logging_repo.LogError("Attempt to access specific study link details for " + bb.acronym + " failed");
+                            logging_helper.LogError("Attempt to access specific study link details for " + bb.acronym + " failed");
                         }
                         else
                         {

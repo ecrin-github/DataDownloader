@@ -396,7 +396,10 @@ namespace DataDownloader.isrctn
                                 string url = output_attributes[0]?.SelectSingleNode("a[1]")?.GetAttributeValue("href");
                                 if (!string.IsNullOrEmpty(url))
                                 {
-                                    url = url.StartsWith("/") ? "https://www.isrctn.com" + url : "https://www.isrctn.com/" + url;
+                                    if (!url.ToLower().StartsWith("http")) 
+                                    {
+                                        url = url.StartsWith("/") ? "https://www.isrctn.com" + url : "https://www.isrctn.com/" + url;
+                                    }
                                 }
                                 string dets = InnerContent(output_attributes[1]);
                                 DateTime? created = GetDate(output_attributes[2]);

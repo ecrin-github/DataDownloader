@@ -8,31 +8,31 @@ namespace DataDownloader.euctr
 {
     class EUCTR_Controller
     {
-        ScrapingBrowser browser;
-        EUCTR_Processor processor;
-        Source source;
-        FileWriter file_writer;
-        string file_base;
-        int saf_id;
-        int source_id;
-        int sf_type_id;
-        LoggingDataLayer logging_repo;
-        Args args;
-        int access_error_num = 0;
-        int pause_error_num = 0;
+        ScrapingBrowser _browser;
+        EUCTR_Processor _processor;
+        Source _source;
+        FileWriter _file_writer;
+        string _file_base;
+        int _saf_id;
+        int _source_id;
+        Args _args;
+        int _access_error_num = 0;
+        int _pause_error_num = 0;
+        MonitorDataLayer _monitor_repo;
+        LoggingHelper _logging_helper;
 
-
-        public EUCTR_Controller(ScrapingBrowser _browser, int _saf_id, Source _source, Args _args, LoggingDataLayer _logging_repo)
+        public EUCTR_Controller(ScrapingBrowser browser, int saf_id, Source source, Args args, MonitorDataLayer monitor_repo, LoggingHelper logging_helper)
         {
-            browser = _browser;
-            processor = new EUCTR_Processor();
-            source = _source;
-            file_base = source.local_folder;
-            source_id = source.id;
-            saf_id = _saf_id;
-            file_writer = new FileWriter(source);
-            logging_repo = _logging_repo;
-            args = _args;
+            _browser = browser;
+            _processor = new EUCTR_Processor();
+            _source = source;
+            _file_base = source.local_folder;
+            _source_id = source.id;
+            _saf_id = saf_id;
+            _file_writer = new FileWriter(source);
+            _args = args;
+            _monitor_repo = monitor_repo;
+            _logging_helper = logging_helper;
         }
 
 
@@ -42,7 +42,7 @@ namespace DataDownloader.euctr
             // first ensure that the web site is up
             // and get total record numbers and total page numbers
 
-            ScrapingHelpers ch = new ScrapingHelpers(browser, logging_repo);
+            ScrapingHelpers ch = new ScrapingHelpers(_browser, _logging_helper);
             string baseURL = "https://www.clinicaltrialsregister.eu/ctr-search/search?page=";
             WebPage initialPage = ch.GetPage(baseURL + "1");
 
@@ -51,7 +51,7 @@ namespace DataDownloader.euctr
                 // first get total number of records 
                 // Only proceed if that initial task is possible
 
-                int rec_num = processor.GetListLength(initialPage);
+                int rec_num = _processor.GetListLength(initialPage);
                 if (rec_num != 0)
                 {
                     int page_num = rec_num % 20 == 0 ? rec_num / 20 : (rec_num / 20) + 1;
@@ -60,15 +60,16 @@ namespace DataDownloader.euctr
                     // if type = 146 scrape all records in the designated page range (20 records per page)
                     // in both cases ignore records that have been downloaded in recent interval (I, 'skip recent' parameter)
 
-                    if (args.type_id == 145)
+                    if (_args.type_id == 145)
                     {
-                        return LoopThrougRecsWithDLStatusZero(ch, baseURL, page_num, args.skip_recent_days);
+                        return LoopThrougRecsWithDLStatusZero(ch, baseURL, page_num, _args.skip_recent_days);
                     }
-                    else if (args.type_id == 146)
+                    else if (_args.type_id == 146)
                     {
-                        if (args.start_page != null && args.end_page != null)
+                        if (_args.start_page != null && _args.end_page != null)
                         {
-                            return LoopThroughAllPages(ch, baseURL, (int)args.start_page, (int)args.end_page, args.skip_recent_days);
+                            int end_page = _args.end_page > page_num ? page_num : (int)_args.end_page;
+                            return LoopThroughAllPages(ch, baseURL, (int)_args.start_page, end_page, _args.skip_recent_days);
                         }
                         else
                         {
@@ -102,9 +103,9 @@ namespace DataDownloader.euctr
             // database / web pages. i = 2000 skips the first 40,000 entries!
             // (will need changing if logs indicate this is problematic)
 
-            for (int i = 2000; i <= page_num; i++)
+            for (int i = 1; i <= page_num; i++)
             {
-                if (res.num_downloaded > 5) break;  // for testing
+                //if (res.num_downloaded > 5) break;  // for testing
 
                 System.Threading.Thread.Sleep(100);
 
@@ -117,11 +118,11 @@ namespace DataDownloader.euctr
                     // first get a simple list of EUCTR ids from that page
                     // and check then against the database to see which ones really need downloading
 
-                    List<EUCTR_Summmary> summaries = processor.GetStudyList(summaryPage);
+                    List<EUCTR_Summmary> summaries = _processor.GetStudyList(summaryPage);
                     int num_to_download = 0;
                     foreach (EUCTR_Summmary s in summaries)
                     {
-                        StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(s.eudract_id, source_id);
+                        StudyFileRecord file_record = _monitor_repo.FetchStudyFileRecord(s.eudract_id, _source_id);
                         res.num_checked++;
 
                         if (file_record == null || file_record.download_status == 0)
@@ -132,7 +133,7 @@ namespace DataDownloader.euctr
 
                             if (days_ago != null)
                             {
-                                if (logging_repo.Downloaded_recently(source_id, s.eudract_id, (int)days_ago))
+                                if (_monitor_repo.Downloaded_recently(_source_id, s.eudract_id, (int)days_ago))
                                 {
                                     s.do_download = false;
                                 }
@@ -152,80 +153,89 @@ namespace DataDownloader.euctr
                         {
                             if (summaries[j].do_download)
                             {
-                                EUCTR_Summmary s = processor.DeriveFullSummary(summaryPage, summaries[j], j);
-
-                                if (s.trial_status.StartsWith("At position "))
+                                // get full details
+                                try
                                 {
-                                    // a problem with matching ids - stop the process
-                                    res.error_message = s.trial_status;
-                                    return res;
-                                }
+                                    EUCTR_Summmary s = _processor.DeriveFullSummary(summaryPage, summaries[j], j);
 
-                                // OK to proceed -  transfer summary details to the main EUCTR_record object
-                                // and then get full protocol details
-
-                                EUCTR_Record st = new EUCTR_Record(s);
-
-                                WebPage detailsPage = ch.GetPage(st.details_url);
-                                if (detailsPage != null)
-                                {
-                                    st = processor.ExtractProtocolDetails(st, detailsPage);
-
-                                    // Then get results details if available
-
-                                    if (st.results_url != null)
+                                    if (s.trial_status != null && s.trial_status.StartsWith("At position "))
                                     {
-                                        System.Threading.Thread.Sleep(800);
-                                        WebPage resultsPage = ch.GetPage(st.results_url);
-                                        if (resultsPage != null)
-                                        {
-                                            st = processor.ExtractResultDetails(st, resultsPage);
-                                        }
-                                        else
-                                        {
-                                            logging_repo.LogError("Problem in navigating to result details, eudract_id is " + s.eudract_id);
-                                            CheckAccessErrorCount();
-                                        }
+                                        // a problem with matching ids - stop the process
+                                        res.error_message = s.trial_status;
+                                        return res;
                                     }
 
-                                    // Write out study record as XML.
+                                    // OK to proceed -  transfer summary details to the main EUCTR_record object
+                                    // and then get full protocol details
 
-                                    string full_path = WriteOutFile(st.eudract_id, st);
+                                    EUCTR_Record st = new EUCTR_Record(s);
 
-                                    // Update the source data record, modifying it or adding a new one...
-
-                                    if (UpdateFileRecord(source_id, st.eudract_id, st.details_url, full_path))
+                                    WebPage detailsPage = ch.GetPage(st.details_url);
+                                    if (detailsPage != null)
                                     {
-                                        res.num_added++;
+                                        st = _processor.ExtractProtocolDetails(st, detailsPage);
+
+                                        // Then get results details if available
+
+                                        if (st.results_url != null)
+                                        {
+                                            System.Threading.Thread.Sleep(800);
+                                            WebPage resultsPage = ch.GetPage(st.results_url);
+                                            if (resultsPage != null)
+                                            {
+                                                st = _processor.ExtractResultDetails(st, resultsPage);
+                                            }
+                                            else
+                                            {
+                                                _logging_helper.LogError("Problem in navigating to result details, eudract_id is " + s.eudract_id);
+                                                CheckAccessErrorCount();
+                                            }
+                                        }
+
+                                        // Write out study record as XML.
+
+                                        string full_path = WriteOutFile(st.eudract_id, st);
+
+                                        // Update the source data record, modifying it or adding a new one...
+
+                                        if (UpdateFileRecord(_source_id, st.eudract_id, st.details_url, full_path))
+                                        {
+                                            res.num_added++;
+                                        }
+
+                                        res.num_downloaded++;
+                                    }
+                                    else
+                                    {
+                                        _logging_helper.LogError("Problem in navigating to protocol details page, eudract_id is " + s.eudract_id);
+                                        CheckAccessErrorCount();
                                     }
 
-                                    res.num_downloaded++;
+                                    System.Threading.Thread.Sleep(500);
                                 }
-                                else
+                                catch (Exception e)
                                 {
-                                    logging_repo.LogError("Problem in navigating to protocol details page, eudract_id is " + s.eudract_id);
-                                    CheckAccessErrorCount();
+                                    //To do
+                                    string s = e.Message;
                                 }
-
-                                System.Threading.Thread.Sleep(500);
                             }
                         }
                     }
                 }
                 else
                 {
-                    logging_repo.LogError("Problem in navigating to summary page, page value is " + i.ToString());
+                    _logging_helper.LogError("Problem in navigating to summary page, page value is " + i.ToString());
                     CheckAccessErrorCount();
                 }
 
                 if (res.num_checked % 100 == 0)
                 {
-                    logging_repo.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
-                    logging_repo.LogLine("EUCTR pages downloaded: " + res.num_downloaded.ToString());
+                    _logging_helper.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
+                    _logging_helper.LogLine("EUCTR pages downloaded: " + res.num_downloaded.ToString());
                 }
             }
 
-            logging_repo.LogLine("Number of errors: " + access_error_num.ToString());
+            _logging_helper.LogLine("Number of errors: " + _access_error_num.ToString());
             return res;
         }
 
@@ -250,7 +260,7 @@ namespace DataDownloader.euctr
                 WebPage summaryPage = ch.GetPage(baseURL + i.ToString());
                 if (summaryPage != null)
                 { 
-                    List<EUCTR_Summmary> summaries = processor.GetStudyList(summaryPage, true);
+                    List<EUCTR_Summmary> summaries = _processor.GetStudyList(summaryPage, true);
 
                     // by default all studies are scraped, but if the 'days ago' parameter has a value
                     // each study needs to be checked first, to see if it is still necessar=y to download it
@@ -259,7 +269,7 @@ namespace DataDownloader.euctr
                     {
                         for (int j = 0; j < summaries.Count; j++)
                         {
-                            if (logging_repo.Downloaded_recently(source_id, summaries[j].eudract_id, (int)days_ago))
+                            if (_monitor_repo.Downloaded_recently(_source_id, summaries[j].eudract_id, (int)days_ago))
                             {
                                 summaries[j].do_download = false;
                             }
@@ -271,7 +281,7 @@ namespace DataDownloader.euctr
                     {
                         if (summaries[j].do_download)
                         {
-                            EUCTR_Summmary s = processor.DeriveFullSummary(summaryPage, summaries[j], j);
+                            EUCTR_Summmary s = _processor.DeriveFullSummary(summaryPage, summaries[j], j);
                             if (s.trial_status != null && s.trial_status.StartsWith("At position "))
                             {
                                 // a problem with matching ids - stop the process
@@ -287,7 +297,7 @@ namespace DataDownloader.euctr
                             WebPage detailsPage = ch.GetPage(st.details_url);
                             if (detailsPage != null)
                             {
-                                st = processor.ExtractProtocolDetails(st, detailsPage);
+                                st = _processor.ExtractProtocolDetails(st, detailsPage);
 
                                 // Then get results details
 
@@ -297,11 +307,11 @@ namespace DataDownloader.euctr
                                     WebPage resultsPage = ch.GetPage(st.results_url);
                                     if (resultsPage != null)
                                     {
-                                        st = processor.ExtractResultDetails(st, resultsPage);
+                                        st = _processor.ExtractResultDetails(st, resultsPage);
                                     }
                                     else
                                     {
-                                        logging_repo.LogError("Problem in navigating to result details, eudract_id is " + s.eudract_id);
+                                        _logging_helper.LogError("Problem in navigating to result details, eudract_id is " + s.eudract_id);
                                     }
                                 }
 
@@ -311,7 +321,7 @@ namespace DataDownloader.euctr
 
                                 // Update the source data record, modifying it or adding a new one...
 
-                                if (UpdateFileRecord(source_id, st.eudract_id, st.details_url, full_path))
+                                if (UpdateFileRecord(_source_id, st.eudract_id, st.details_url, full_path))
                                 {
                                     res.num_added++;
                                 }
@@ -320,7 +330,7 @@ namespace DataDownloader.euctr
                             }
                             else
                             {
-                                logging_repo.LogError("Problem in navigating to protocol details, eudract_id is " + s.eudract_id);
+                                _logging_helper.LogError("Problem in navigating to protocol details, eudract_id is " + s.eudract_id);
                                 CheckAccessErrorCount();
                             }
 
@@ -330,18 +340,18 @@ namespace DataDownloader.euctr
                 }
                 else
                 {
-                    logging_repo.LogError("Problem in navigating to summary page, page value is " + i.ToString());
+                    _logging_helper.LogError("Problem in navigating to summary page, page value is " + i.ToString());
                     CheckAccessErrorCount();
                 }
 
                 if (res.num_checked % 20 == 0)
                 {
-                    logging_repo.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
-                    logging_repo.LogLine("EUCTR pages downloaded: " + res.num_downloaded.ToString());
+                    _logging_helper.LogLine("EUCTR pages checked: " + res.num_checked.ToString());
+                    _logging_helper.LogLine("EUCTR pages downloaded: " + res.num_downloaded.ToString());
                 }
             }
 
-            logging_repo.LogLine("Number of errors: " + access_error_num.ToString());
+            _logging_helper.LogLine("Number of errors: " + _access_error_num.ToString());
             return res;
         }
 
@@ -349,7 +359,7 @@ namespace DataDownloader.euctr
         private bool UpdateFileRecord(int source_id, string eudract_id, string details_url, string full_path)
         {
             // Get the source data record and modify it or add a new one...
-            StudyFileRecord file_record = logging_repo.FetchStudyFileRecord(eudract_id, source_id);
+            StudyFileRecord file_record = _monitor_repo.FetchStudyFileRecord(eudract_id, source_id);
             bool addition = false;
 
             if (file_record == null)
@@ -357,21 +367,21 @@ namespace DataDownloader.euctr
                 // should always be present but just in case...    
                 // this neeeds to have a new record
                 file_record = new StudyFileRecord(source_id, eudract_id, details_url,
-                                                    saf_id, null, full_path);
-                logging_repo.InsertStudyFileRec(file_record);
+                                                    _saf_id, null, full_path);
+                _monitor_repo.InsertStudyFileRec(file_record);
                 addition = true;
             }
             else
             {
                 // update record
                 file_record.remote_url = details_url;
-                file_record.last_saf_id = saf_id;
+                file_record.last_saf_id = _saf_id;
                 file_record.download_status = 2;
                 file_record.last_downloaded = DateTime.Now;
                 file_record.local_path = full_path;
 
                 // Update file record
-                logging_repo.StoreStudyFileRec(file_record);
+                _monitor_repo.StoreStudyFileRec(file_record);
             }
             return addition;
         }
@@ -380,29 +390,29 @@ namespace DataDownloader.euctr
         private string WriteOutFile(string eudract_id, EUCTR_Record st)
         {
             XmlSerializer writer = new XmlSerializer(typeof(EUCTR_Record));
-            if (!Directory.Exists(file_base))
+            if (!Directory.Exists(_file_base))
             {
-                Directory.CreateDirectory(file_base);
+                Directory.CreateDirectory(_file_base);
             }
             string file_name = "EU " + eudract_id + ".xml";
-            string full_path = Path.Combine(file_base, file_name);
-            file_writer.WriteEUCTRFile(writer, st, full_path);
+            string full_path = Path.Combine(_file_base, file_name);
+            _file_writer.WriteEUCTRFile(writer, st, full_path);
             return full_path;
         }
 
 
         private void CheckAccessErrorCount()
         {
-            access_error_num++;
-            if (access_error_num % 5 == 0)
+            _access_error_num++;
+            if (_access_error_num % 5 == 0)
             {
                 // do a 5 minute pause
                 TimeSpan pause = new TimeSpan(0, 1, 0);
                 System.Threading.Thread.Sleep(pause);
-                pause_error_num++;
-                access_error_num = 0;
+                _pause_error_num++;
+                _access_error_num = 0;
             }
-            if (pause_error_num > 5)
+            if (_pause_error_num > 5)
             {
                 //throw new Exception("Too many access errors");
             }

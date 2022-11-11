@@ -4,9 +4,9 @@ namespace DataDownloader.ctg
 {
     public class CTG_Processor
     {
-        public ctg_basics ObtainBasicDetails(XmlNode fs, LoggingDataLayer logging_repo)
+        public ctg_basics ObtainBasicDetails(XmlNode fs, LoggingHelper logging_helper)
         {
-            DateHelpers dh = new DateHelpers(logging_repo);
+            DateHelpers dh = new DateHelpers(logging_helper);
 
             ctg_basics ctg = new ctg_basics();
 

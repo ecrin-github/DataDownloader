@@ -11,7 +11,6 @@ namespace DataDownloader.yoda
         public string yoda_title { get; set; }
         public string name_base_title { get; set; }
         public string brief_description { get; set; }
-        public bool is_yoda_only { get; set; }
         public string remote_url { get; set; }
         public int? sponsor_id { get; set; }
         public string sponsor { get; set; }
@@ -43,7 +42,6 @@ namespace DataDownloader.yoda
             sd_sid = sm.sd_sid;
             registry_id = sm.registry_id ?? "";
             yoda_title = sm.study_name;
-            is_yoda_only = (registry_id.StartsWith("NCT") || registry_id.StartsWith("ISRCTN")) ? false : true;
             remote_url = sm.details_link;
         }
 
@@ -74,6 +72,19 @@ namespace DataDownloader.yoda
     {
         public string sd_sid { get; set; }
         public string display_title { get; set; }
+        public string brief_description { get; set; }
+        public int? study_type_id { get; set; }
+    }
+
+
+    public class NotRegisteredDetails
+    {
+        public string sd_sid { get; set; }
+        public int? sponsor_id { get; set; }
+        public string sponsor_name { get; set; }
+        public string short_sponsor_name { get; set; }
+        public string short_protocol_id { get; set; }
+        public string title { get; set; }
         public string brief_description { get; set; }
         public int? study_type_id { get; set; }
     }
