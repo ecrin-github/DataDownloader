@@ -10,6 +10,9 @@ namespace DataDownloader
     {
         private string logfile_startofpath;
         private string logfile_path;
+        private string summary_logfile_startofpath;
+        private string summary_logfile_path;
+        private string summary_text;
         private StreamWriter sw;
 
         public LoggingHelper()
@@ -20,7 +23,7 @@ namespace DataDownloader
                 .Build();
 
             logfile_startofpath = settings["logfilepath"];
-
+            summary_logfile_startofpath = settings["summaryfilepath"];
         }
 
         // Used to check if a log file with a named source has been created
@@ -40,6 +43,7 @@ namespace DataDownloader
             }
 
             logfile_path = Path.Combine(log_folder_path, "DL " + source.database_name + " " + dt_string);
+            summary_logfile_path = Path.Combine(summary_logfile_startofpath, "DL " + source.database_name + " " + dt_string);
 
             // source file name used for WHO case, where the source is a file
             // In other cases is not required
@@ -80,7 +84,7 @@ namespace DataDownloader
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
             string header = dt_string + "**** " + message + " ****";
            Transmit("");
-            Transmit(header);
+           Transmit(header);
         }
 
 
@@ -93,17 +97,37 @@ namespace DataDownloader
             Transmit(error_message);
             Transmit("+++++++++++++++++++++++++++++++++++++++");
             Transmit("");
+
+            summary_text += "\nTRAPPED ERROR: " + message;
+        }
+
+
+        public void LogCodeError(string header, string errorMessage, string stackTrace)
+        {
+            string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
+            string headerMessage = dt_string + "***ERROR*** " + header + "\n";
+            Transmit("");
+            Transmit("+++++++++++++++++++++++++++++++++++++++");
+            Transmit(headerMessage);
+            Transmit(errorMessage + "\n");
+            Transmit(stackTrace);
+            Transmit("+++++++++++++++++++++++++++++++++++++++");
+            Transmit("");
+
+            summary_text += "\nUNTRAPPED ERROR: " ;
+            summary_text += "\nERROR MESSAGE: ";
+            summary_text += "\nSTACK TRACE: ";
         }
 
 
         public void LogRes(DownloadResult res)
         {
             string dt_string = DateTime.Now.ToShortDateString() + " : " + DateTime.Now.ToShortTimeString() + " :   ";
-            Transmit("");
-            Transmit(dt_string + "**** " + "Download Result" + " ****");
-            Transmit(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
-            Transmit(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
-            Transmit(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
+            TransmitAndAddToSummary("");
+            TransmitAndAddToSummary(dt_string + "**** " + "Download Result" + " ****");
+            TransmitAndAddToSummary(dt_string + "**** " + "Records checked: " + res.num_checked.ToString() + " ****");
+            TransmitAndAddToSummary(dt_string + "**** " + "Records downloaded: " + res.num_downloaded.ToString() + " ****");
+            TransmitAndAddToSummary(dt_string + "**** " + "Records added: " + res.num_added.ToString() + " ****");
         }
 
 
@@ -112,6 +136,17 @@ namespace DataDownloader
             LogHeader("Closing Log");
             sw.Flush();
             sw.Close();
+
+            if (!string.IsNullOrEmpty(summary_text))
+            {
+                sw = new StreamWriter(summary_logfile_path, true, System.Text.Encoding.UTF8);
+                sw.WriteLineAsync(summary_text);
+                sw.Flush();
+                sw.Close();
+
+                // transfer file to mail pickup folder
+
+            }
         }
 
 
@@ -120,6 +155,31 @@ namespace DataDownloader
             sw.WriteLine(message);
             Console.WriteLine(message);
         }
+
+
+        private void TransmitAndAddToSummary(string message)
+        {
+            sw.WriteLine(message);
+            Console.WriteLine(message);
+            summary_text += "\n" + message;
+        }
+
+
+        public void SendEMail(string message)
+        {
+            sw = new StreamWriter(summary_logfile_path, true, System.Text.Encoding.UTF8);
+
+
+            sw.WriteLine(summary_text);
+
+
+            sw.Flush();
+            sw.Close();
+
+            // transfer file to mail pickup folder
+
+        }
+
 
 
         public string LogArgsParameters(Args args)

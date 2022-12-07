@@ -173,16 +173,12 @@ namespace DataDownloader
                       
         }
 
+
         private static void EndOnError(LoggingHelper logging_helper, string error_header, string error_message,
                                         string target_site, string stack_trace)
         {
-            logging_helper.LogLine(error_message);
-            logging_helper.LogLine(target_site);
-            logging_helper.LogLine(stack_trace);
+            logging_helper.LogCodeError("Uncaught Error in " + target_site, error_message, stack_trace);
             logging_helper.CloseLog();
-
-            string error_message_text = error_header + error_message + "\n" + target_site + "\n" + stack_trace;
-            logging_helper.SendEmail(error_message_text);
         }
 
 
